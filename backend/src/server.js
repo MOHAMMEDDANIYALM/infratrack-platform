@@ -26,15 +26,16 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api', projectRoutes);
 
-// Serve static files from React frontend build (in production)
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../public')));
-  
-  // Handle React routing - return all requests to React app
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../public', 'index.html'));
-  });
-}
+// Serve static files from React frontend build (disabled on Azure until frontend is deployed)
+// if (process.env.NODE_ENV === 'production') {
+//   const publicPath = path.join(__dirname, '../public');
+//   app.use(express.static(publicPath));
+//
+//   // Handle React routing - return all requests to React app
+//   app.get('*', (req, res) => {
+//     res.sendFile(path.join(publicPath, 'index.html'));
+//   });
+// }
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -45,13 +46,18 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start server
-const PORT = process.env.PORT || 5000;
+// Start server (Azure sets PORT env var)
+const PORT = process.env.PORT;
+
+if (!PORT) {
+  console.error('❌ PORT not defined by Azure');
+  process.exit(1);
+}
 
 // Connect to database and start server
 connectDB().then(() => {
-  app.listen(PORT, () => {
-    console.log(`🚀 InfraTrack Backend running on http://localhost:${PORT}`);
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 InfraTrack Backend running on port ${PORT}`);
     console.log(`📡 Environment: ${process.env.NODE_ENV || 'development'}`);
   });
 }).catch((error) => {
