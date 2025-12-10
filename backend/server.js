@@ -1,2 +1,2 @@
-// Root-level server.js that Azure can find easily
+// Root entry point for Azure App Service
 require('./src/server.js');

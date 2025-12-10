@@ -33,12 +33,24 @@ app.use('/api', projectRoutes);
 if (process.env.NODE_ENV === 'production') {
   const publicPath = path.join(__dirname, '../public');
   console.log('🗂️  Serving static files from:', publicPath);
-  app.use(express.static(publicPath, { maxAge: '1d', etag: false }));
+  
+  // Serve static files ONLY for non-API routes
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/api') || req.path === '/health') {
+      return next(); // Skip static middleware for API and health routes
+    }
+    express.static(publicPath, { maxAge: '1d', etag: false })(req, res, next);
+  });
 
-  // Wildcard route for React Router (Express 5 syntax)
-  app.get(/.*/,  (req, res) => {
+  // Wildcard route for React Router - return index.html only for non-API requests
+  app.get(/^(?!\/api|\/health).*/, (req, res) => {
     console.log('📄 Serving index.html for:', req.url);
-    res.sendFile(path.join(publicPath, 'index.html'));
+    res.sendFile(path.join(publicPath, 'index.html'), (err) => {
+      if (err) {
+        console.error('❌ Error serving index.html:', err);
+        res.status(404).json({ error: 'Frontend not found' });
+      }
+    });
   });
 }
 
