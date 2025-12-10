@@ -54,13 +54,14 @@ app.use((err, req, res, next) => {
 // Start server (Azure sets PORT env var, local uses 5000)
 const PORT = process.env.PORT || 5000;
 
-// Connect to database and start server
-connectDB().then(() => {
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 InfraTrack Backend running on port ${PORT}`);
-    console.log(`📡 Environment: ${process.env.NODE_ENV || 'development'}`);
+// Start server FIRST (don't wait for DB)
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 InfraTrack Backend running on port ${PORT}`);
+  console.log(`📡 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`📍 Public path: ${path.join(__dirname, '../public')}`);
+  
+  // Connect to database AFTER server starts
+  connectDB().catch((error) => {
+    console.error('⚠️ Database connection failed, but server is still running:', error.message);
   });
-}).catch((error) => {
-  console.error('Failed to start server:', error.message);
-  process.exit(1);
 });
