@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 const connectDB = require('./config/database');
 
 const authRoutes = require('./routes/authRoutes');
@@ -25,32 +26,38 @@ app.get('/health', (req, res) => {
   res.json({ status: 'Backend is running ✅' });
 });
 
-// API Routes
+// API Routes - MUST come BEFORE static files and wildcard
 app.use('/api/auth', authRoutes);
 app.use('/api', projectRoutes);
 
 // Serve static files from React frontend build (ONLY in production)
 if (process.env.NODE_ENV === 'production') {
   const publicPath = path.join(__dirname, '../public');
-  console.log('🗂️  Serving static files from:', publicPath);
   
-  // Serve static files ONLY for non-API routes
+  // Serve static files for non-API routes only
   app.use((req, res, next) => {
-    if (req.path.startsWith('/api') || req.path === '/health') {
-      return next(); // Skip static middleware for API and health routes
+    if (req.path.startsWith('/api') || req.path.startsWith('/health')) {
+      return next();
     }
-    express.static(publicPath, { maxAge: '1d', etag: false })(req, res, next);
+    return express.static(publicPath, {
+      maxAge: '1d',
+      etag: false,
+      setHeaders: (res, p) => {
+        if (p.endsWith('.html')) {
+          res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+        }
+      },
+    })(req, res, next);
   });
 
-  // Wildcard route for React Router - return index.html only for non-API requests
-  app.get(/^(?!\/api|\/health).*/, (req, res) => {
-    console.log('📄 Serving index.html for:', req.url);
-    res.sendFile(path.join(publicPath, 'index.html'), (err) => {
-      if (err) {
-        console.error('❌ Error serving index.html:', err);
-        res.status(404).json({ error: 'Frontend not found' });
-      }
-    });
+  // Fallback: serve index.html for all non-API routes (Express 5 regex)
+  app.get(/^\/(?!api|health)(.*)/, (req, res) => {
+    const indexPath = path.join(publicPath, 'index.html');
+    if (fs.existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      res.status(404).json({ error: 'Frontend not found' });
+    }
   });
 }
 
