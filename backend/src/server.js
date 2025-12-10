@@ -9,9 +9,9 @@ const projectRoutes = require('./routes/projectRoutes');
 
 const app = express();
 
-// CORS Configuration: Dev allows localhost:5173, Production uses same-origin only
+// CORS Configuration: Same origin in production (frontend served by backend)
 const corsOptions = {
-  origin: process.env.NODE_ENV === 'production' ? false : 'http://localhost:5173',
+  origin: process.env.NODE_ENV === 'production' ? true : 'http://localhost:5173',
   credentials: true,
 };
 
