@@ -26,7 +26,7 @@ jobs:
           npm run build
           
       - name: Install Backend Dependencies
-        working-directory: backend
+        working-directory: backend/backend
         run: |
           npm ci --only=production
           
@@ -36,11 +36,11 @@ jobs:
           mkdir -p deploy-package
           
           # Copy backend files
-          cp -r backend/src deploy-package/
-          cp backend/server.js deploy-package/
-          cp backend/package.json deploy-package/
-          cp backend/package-lock.json deploy-package/
-          cp -r backend/node_modules deploy-package/
+          cp -r backend/backend/src deploy-package/
+          cp backend/backend/server.js deploy-package/
+          cp backend/backend/package.json deploy-package/
+          cp backend/backend/package-lock.json deploy-package/
+          cp -r backend/backend/node_modules deploy-package/
           
           # Copy frontend build to public folder
           mkdir -p deploy-package/public
