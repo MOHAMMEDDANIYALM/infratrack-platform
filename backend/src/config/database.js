@@ -13,8 +13,17 @@ const connectDB = async () => {
       ssl: true,
       tls: true,
       tlsAllowInvalidCertificates: true,
-      serverSelectionTimeoutMS: 10000,
+      serverSelectionTimeoutMS: 30000,
+      socketTimeoutMS: 45000,
+      maxPoolSize: 10,
+      minPoolSize: 2,
+      retryWrites: false,
+      directConnection: false,
     });
+
+    // Disable buffering - fail fast instead of buffering queries
+    mongoose.set('bufferCommands', false);
+    mongoose.set('bufferTimeoutMS', 20000);
 
     console.log('✅ Cosmos DB Connected:', mongoUri.substring(0, 30) + '...');
   } catch (error) {
