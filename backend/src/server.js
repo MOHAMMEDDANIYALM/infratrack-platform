@@ -9,11 +9,14 @@ const projectRoutes = require('./routes/projectRoutes');
 
 const app = express();
 
-// Middleware
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+// CORS Configuration: Dev allows localhost:5173, Production uses same-origin only
+const corsOptions = {
+  origin: process.env.NODE_ENV === 'production' ? false : 'http://localhost:5173',
   credentials: true,
-}));
+};
+
+// Middleware
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -26,16 +29,16 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api', projectRoutes);
 
-// Serve static files from React frontend build (disabled on Azure until frontend is deployed)
-// if (process.env.NODE_ENV === 'production') {
-//   const publicPath = path.join(__dirname, '../public');
-//   app.use(express.static(publicPath));
-//
-//   // Handle React routing - return all requests to React app
-//   app.get('*', (req, res) => {
-//     res.sendFile(path.join(publicPath, 'index.html'));
-//   });
-// }
+// Serve static files from React frontend build (ONLY in production)
+if (process.env.NODE_ENV === 'production') {
+  const publicPath = path.join(__dirname, '../public');
+  app.use(express.static(publicPath, { maxAge: '1d', etag: false }));
+
+  // Wildcard route: all non-API requests return index.html for React Router
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(publicPath, 'index.html'));
+  });
+}
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -46,13 +49,8 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start server (Azure sets PORT env var)
-const PORT = process.env.PORT;
-
-if (!PORT) {
-  console.error('❌ PORT not defined by Azure');
-  process.exit(1);
-}
+// Start server (Azure sets PORT env var, local uses 5000)
+const PORT = process.env.PORT || 5000;
 
 // Connect to database and start server
 connectDB().then(() => {

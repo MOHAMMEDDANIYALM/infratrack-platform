@@ -8,7 +8,13 @@ const Alert = require('./models/Alert');
 const Cost = require('./models/Cost');
 const Deployment = require('./models/Deployment');
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/infratrack';
+// Production: MONGODB_URI is mandatory
+const MONGODB_URI = process.env.MONGODB_URI;
+
+if (!MONGODB_URI) {
+  console.error('❌ MONGODB_URI not defined. Cannot seed database.');
+  process.exit(1);
+}
 
 const seedDatabase = async () => {
   try {
