@@ -32,10 +32,12 @@ app.use('/api', projectRoutes);
 // Serve static files from React frontend build (ONLY in production)
 if (process.env.NODE_ENV === 'production') {
   const publicPath = path.join(__dirname, '../public');
+  console.log('🗂️  Serving static files from:', publicPath);
   app.use(express.static(publicPath, { maxAge: '1d', etag: false }));
 
   // Wildcard route: all non-API requests return index.html for React Router
   app.get('*', (req, res) => {
+    console.log('📄 Serving index.html for:', req.url);
     res.sendFile(path.join(publicPath, 'index.html'));
   });
 }

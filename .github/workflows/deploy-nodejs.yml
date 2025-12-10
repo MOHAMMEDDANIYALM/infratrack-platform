@@ -37,6 +37,7 @@ jobs:
           
           # Copy backend files
           cp -r backend/src deploy-package/
+          cp backend/server.js deploy-package/
           cp backend/package.json deploy-package/
           cp backend/package-lock.json deploy-package/
           cp -r backend/node_modules deploy-package/
@@ -52,21 +53,18 @@ jobs:
           <configuration>
             <system.webServer>
               <handlers>
-                <add name="iisnode" path="src/server.js" verb="*" modules="iisnode"/>
+                <add name="iisnode" path="server.js" verb="*" modules="iisnode"/>
               </handlers>
               <rewrite>
                 <rules>
                   <rule name="NodeInspector" patternSyntax="ECMAScript" stopProcessing="true">
-                    <match url="^src/server.js\/debug[\/]?" />
-                  </rule>
-                  <rule name="StaticContent">
-                    <action type="Rewrite" url="public{REQUEST_URI}"/>
+                    <match url="^server.js\/debug[\/]?" />
                   </rule>
                   <rule name="DynamicContent">
                     <conditions>
                       <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="True"/>
                     </conditions>
-                    <action type="Rewrite" url="src/server.js"/>
+                    <action type="Rewrite" url="server.js"/>
                   </rule>
                 </rules>
               </rewrite>
