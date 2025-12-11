@@ -54,7 +54,33 @@ export const AuthProvider = ({ children }) => {
     }
 
     try {
-      const msalResponse = await msalInstanceRef.current.loginPopup({ scopes: microsoftScopes });
+      // Check if interaction is already in progress
+      if (msalInstanceRef.current.getAllAccounts().length > 0) {
+        // User already signed in, just get token silently
+        const msalResponse = await msalInstanceRef.current.acquireTokenSilent({
+          scopes: microsoftScopes,
+          account: msalInstanceRef.current.getAllAccounts()[0],
+        });
+        const idToken = msalResponse.idToken;
+
+        if (!idToken) {
+          throw new Error('No Microsoft token returned');
+        }
+
+        const response = await authAPI.loginWithMicrosoft(idToken);
+        localStorage.setItem('token', response.token);
+        localStorage.setItem('refreshToken', response.refreshToken);
+        localStorage.setItem('user', JSON.stringify(response.user));
+        setToken(response.token);
+        setUser(response.user);
+        return response;
+      }
+
+      // First time login - use popup
+      const msalResponse = await msalInstanceRef.current.loginPopup({ 
+        scopes: microsoftScopes,
+        redirectUri: window.location.origin,
+      });
       const idToken = msalResponse.idToken;
 
       if (!idToken) {
@@ -72,7 +98,11 @@ export const AuthProvider = ({ children }) => {
 
       return response;
     } catch (error) {
-      console.error('Microsoft login failed:', error);
+      console.error('Microsoft login failed:', error.message || error);
+      // If interaction_in_progress, allow user to retry
+      if (error.message && error.message.includes('interaction_in_progress')) {
+        throw new Error('A login is already in progress. Please wait or refresh the page.');
+      }
       throw error;
     }
   };
