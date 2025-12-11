@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -206,17 +207,25 @@ exports.microsoftLogin = async (req, res) => {
       return res.status(400).json({ message: 'Token is required' });
     }
 
+    // Ensure DB is connected to avoid opaque server errors
+    if (mongoose.connection.readyState !== 1) {
+      console.error('Microsoft login blocked: database not connected');
+      return res.status(503).json({ message: 'Database not connected. Please check MONGODB_URI in Azure App Settings.' });
+    }
+
     // NOTE: For production, validate against Microsoft JWKS. Here we decode only.
     const decoded = jwt.decode(token);
 
-    if (!decoded || !decoded.email) {
+    const email = decoded?.email || decoded?.preferred_username;
+
+    if (!decoded || !email) {
       console.error('Invalid or missing email in Microsoft token:', decoded);
       return res.status(401).json({ message: 'Invalid Microsoft token' });
     }
 
-    console.log('Microsoft login attempt for email:', decoded.email);
+    console.log('Microsoft login attempt for email:', email);
 
-    let user = await User.findOne({ email: decoded.email });
+    let user = await User.findOne({ email });
 
     // Auto-create user on first Microsoft login
     if (!user) {
@@ -228,9 +237,9 @@ exports.microsoftLogin = async (req, res) => {
         const hashedPassword = await bcrypt.hash(randomPassword, 10);
         
         user = await User.create({
-          email: decoded.email,
-          name: decoded.name || decoded.given_name || 'Microsoft User',
-          organizationId: decoded.oid || 'MICROSOFT_TENANT', // Use object ID as org fallback
+          email,
+          name: decoded.name || decoded.given_name || decoded.family_name || email,
+          organizationId: decoded.oid || decoded.tid || 'MICROSOFT_TENANT', // Fallback to tenant/object id
           role: 'Viewer', // Default role for new users
           department: 'Engineering',
           status: 'active',
