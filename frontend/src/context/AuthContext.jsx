@@ -23,19 +23,29 @@ export const AuthProvider = ({ children }) => {
   const msalInstanceRef = useRef(null);
 
   useEffect(() => {
-    // Check for existing auth token
-    const storedToken = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
-    
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
-    }
-    if (msalConfig.auth.clientId) {
-      msalInstanceRef.current = new PublicClientApplication(msalConfig);
-    }
+    const initializeMsal = async () => {
+      // Check for existing auth token
+      const storedToken = localStorage.getItem('token');
+      const storedUser = localStorage.getItem('user');
+      
+      if (storedToken && storedUser) {
+        setToken(storedToken);
+        setUser(JSON.parse(storedUser));
+      }
 
-    setLoading(false);
+      if (msalConfig.auth.clientId) {
+        try {
+          msalInstanceRef.current = new PublicClientApplication(msalConfig);
+          await msalInstanceRef.current.initialize();
+        } catch (error) {
+          console.error('MSAL initialization error:', error);
+        }
+      }
+
+      setLoading(false);
+    };
+
+    initializeMsal();
   }, []);
 
   const loginWithMicrosoft = async () => {
