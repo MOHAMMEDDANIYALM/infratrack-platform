@@ -35,6 +35,9 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Handle CORS preflight requests
+app.options('*', cors(corsOptions));
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'Backend is running ✅' });
@@ -77,10 +80,10 @@ if (process.env.NODE_ENV === 'production') {
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  console.error('Server error:', err);
   res.status(500).json({
     message: 'Server error',
-    error: process.env.NODE_ENV === 'development' ? err.message : undefined,
+    error: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error',
   });
 });
 

@@ -36,7 +36,13 @@ class APIClient {
         window.location.href = '/';
       }
 
-      const responseData = await response.json();
+      let responseData;
+      try {
+        responseData = await response.json();
+      } catch (e) {
+        console.error('Failed to parse response as JSON:', e);
+        throw new Error(`HTTP ${response.status}: Invalid response format`);
+      }
 
       if (!response.ok) {
         throw new Error(responseData.message || `HTTP ${response.status}`);
