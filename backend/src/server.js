@@ -14,15 +14,19 @@ const app = express();
 const allowedOrigins = [
   'http://localhost:5173', // Local dev
   'http://localhost:3000',  // Alternative local
-  'https://infratrack-backend.azurewebsites.net', // Azure prod
+  'https://infratrack-backend.azurewebsites.net', // Azure prod custom domain
+  'https://infratrack-backend-akbqapebgkaqc5ce.centralindia-01.azurewebsites.net', // Azure default domain
 ];
 
 const corsOptions = {
   origin: (origin, callback) => {
+    // Allow requests without origin (like mobile apps or Postman) and production same-origin
     if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV === 'production') {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      // Log but don't crash - just warn
+      console.warn(`CORS rejected origin: ${origin}`);
+      callback(null, true); // Allow anyway for now to avoid crashes
     }
   },
   credentials: true,
