@@ -216,11 +216,23 @@ exports.microsoftLogin = async (req, res) => {
 
     console.log('Microsoft login attempt for email:', decoded.email);
 
-    const user = await User.findOne({ email: decoded.email });
+    let user = await User.findOne({ email: decoded.email });
 
+    // Auto-create user on first Microsoft login
     if (!user) {
-      console.warn('User not found in database:', decoded.email);
-      return res.status(403).json({ message: 'User not found. Please contact your administrator.' });
+      console.log('Creating new user from Microsoft token:', decoded.email);
+      
+      user = await User.create({
+        email: decoded.email,
+        name: decoded.name || decoded.given_name || 'Microsoft User',
+        organizationId: decoded.oid || 'MICROSOFT_TENANT', // Use object ID as org fallback
+        role: 'Viewer', // Default role for new users
+        department: 'Engineering',
+        status: 'active',
+        password: require('crypto').randomBytes(16).toString('hex'), // Random pwd for SSO users
+      });
+      
+      console.log('New user created:', user._id, user.email);
     }
 
     // Update last login timestamp
