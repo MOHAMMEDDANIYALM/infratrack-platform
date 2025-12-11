@@ -220,19 +220,28 @@ exports.microsoftLogin = async (req, res) => {
 
     // Auto-create user on first Microsoft login
     if (!user) {
-      console.log('Creating new user from Microsoft token:', decoded.email);
-      
-      user = await User.create({
-        email: decoded.email,
-        name: decoded.name || decoded.given_name || 'Microsoft User',
-        organizationId: decoded.oid || 'MICROSOFT_TENANT', // Use object ID as org fallback
-        role: 'Viewer', // Default role for new users
-        department: 'Engineering',
-        status: 'active',
-        password: require('crypto').randomBytes(16).toString('hex'), // Random pwd for SSO users
-      });
-      
-      console.log('New user created:', user._id, user.email);
+      try {
+        console.log('Creating new user from Microsoft token:', decoded.email);
+        
+        // Hash a random password for SSO users (they won't use password login)
+        const randomPassword = require('crypto').randomBytes(16).toString('hex');
+        const hashedPassword = await bcrypt.hash(randomPassword, 10);
+        
+        user = await User.create({
+          email: decoded.email,
+          name: decoded.name || decoded.given_name || 'Microsoft User',
+          organizationId: decoded.oid || 'MICROSOFT_TENANT', // Use object ID as org fallback
+          role: 'Viewer', // Default role for new users
+          department: 'Engineering',
+          status: 'active',
+          password: hashedPassword,
+        });
+        
+        console.log('New user created successfully:', user._id, user.email);
+      } catch (createError) {
+        console.error('Error creating new user:', createError.message);
+        return res.status(500).json({ message: 'Failed to create user account', error: createError.message });
+      }
     }
 
     // Update last login timestamp
@@ -255,7 +264,7 @@ exports.microsoftLogin = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Microsoft login error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('Microsoft login error:', error.message, error.stack);
+    res.status(500).json({ message: 'Server error', error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error' });
   }
 };
