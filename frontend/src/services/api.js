@@ -27,6 +27,7 @@ class APIClient {
     }
 
     try {
+      console.log(`[API] ${method} ${this.baseURL}${url}`);
       const response = await fetch(`${this.baseURL}${url}`, config);
 
       // Handle token expiration
@@ -40,17 +41,19 @@ class APIClient {
       try {
         responseData = await response.json();
       } catch (e) {
-        console.error('Failed to parse response as JSON:', e);
+        console.error('[API] Failed to parse response as JSON:', e, 'Status:', response.status);
         throw new Error(`HTTP ${response.status}: Invalid response format`);
       }
 
       if (!response.ok) {
+        console.error('[API] Error response:', response.status, responseData);
         throw new Error(responseData.message || `HTTP ${response.status}`);
       }
 
+      console.log(`[API] Success: ${method} ${url}`, responseData);
       return responseData;
     } catch (error) {
-      console.error('API Error:', error);
+      console.error('[API] Fetch error:', error.message, 'URL:', `${this.baseURL}${url}`);
       throw error;
     }
   }

@@ -3,6 +3,12 @@ const router = express.Router();
 const authController = require('../controllers/authController');
 const { protect } = require('../middleware/authMiddleware');
 
+// Add request logging
+router.use((req, res, next) => {
+  console.log(`[AUTH] ${req.method} ${req.path}`);
+  next();
+});
+
 router.post('/login', authController.login);
 router.post('/microsoft', authController.microsoftLogin);
 router.post('/register', authController.register);
