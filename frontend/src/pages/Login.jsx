@@ -1,36 +1,34 @@
-import { useState, useContext } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   ShieldCheckIcon,
-  EnvelopeIcon,
-  LockClosedIcon,
-  BuildingOfficeIcon,
   ArrowRightIcon,
   ExclamationTriangleIcon,
+  ArrowPathIcon,
 } from '@heroicons/react/24/outline';
 import { AuthContext } from '../context/AuthContext';
 
 const Login = () => {
   const navigate = useNavigate();
-  const { login } = useContext(AuthContext);
-  const [formData, setFormData] = useState({
-    organizationId: '',
-    email: '',
-    password: '',
-  });
+  const { loginWithMicrosoft, token, loading: authLoading } = useContext(AuthContext);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  useEffect(() => {
+    if (!authLoading && token) {
+      navigate('/dashboard');
+    }
+  }, [token, authLoading, navigate]);
+
+  const handleMicrosoftLogin = async () => {
     setError('');
     setLoading(true);
 
     try {
-      await login(formData.organizationId, formData.email, formData.password);
+      await loginWithMicrosoft();
       navigate('/dashboard');
     } catch (err) {
-      setError(err.message || 'Login failed. Please check your credentials.');
+      setError(err.message || 'Login failed. Please try again.');
       setLoading(false);
     }
   };
@@ -66,8 +64,8 @@ const Login = () => {
         {/* Login Card */}
         <div className="bg-gray-900/80 backdrop-blur-xl border border-cyan-500/20 rounded-2xl shadow-2xl shadow-cyan-500/10 p-8">
           <div className="mb-6">
-            <h2 className="text-2xl font-bold text-white mb-1">Professional Login</h2>
-            <p className="text-gray-400 text-sm">Access restricted to authorized personnel only</p>
+            <h2 className="text-2xl font-bold text-white mb-1">Secure Microsoft Sign-In</h2>
+            <p className="text-gray-400 text-sm">Use your organization Microsoft account to access InfraTrack</p>
           </div>
 
           {error && (
@@ -80,90 +78,31 @@ const Login = () => {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Organization ID */}
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Organization ID / Company Code
-              </label>
-              <div className="relative group">
-                <BuildingOfficeIcon className="w-5 h-5 text-gray-500 absolute left-3 top-1/2 transform -translate-y-1/2 group-focus-within:text-cyan-400 transition-colors" />
-                <input
-                  type="text"
-                  value={formData.organizationId}
-                  onChange={(e) => setFormData({ ...formData, organizationId: e.target.value })}
-                  placeholder="e.g., SA-GOV-001"
-                  className="w-full bg-gray-800/50 text-white placeholder-gray-500 pl-11 pr-4 py-3 rounded-lg border border-gray-700 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 focus:outline-none transition-all"
-                  required
-                />
-              </div>
+          <div className="space-y-5">
+            <div className="p-4 bg-cyan-500/5 border border-cyan-500/20 rounded-lg">
+              <p className="text-sm text-gray-300 font-medium">Single Sign-On enabled</p>
+              <p className="text-xs text-gray-400 mt-1">Use your organization Microsoft Entra ID to continue. Password logins have been disabled.</p>
             </div>
 
-            {/* Email */}
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Professional Email
-              </label>
-              <div className="relative group">
-                <EnvelopeIcon className="w-5 h-5 text-gray-500 absolute left-3 top-1/2 transform -translate-y-1/2 group-focus-within:text-cyan-400 transition-colors" />
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="your.name@enterprise.sa"
-                  className="w-full bg-gray-800/50 text-white placeholder-gray-500 pl-11 pr-4 py-3 rounded-lg border border-gray-700 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 focus:outline-none transition-all"
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Password */}
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Password
-              </label>
-              <div className="relative group">
-                <LockClosedIcon className="w-5 h-5 text-gray-500 absolute left-3 top-1/2 transform -translate-y-1/2 group-focus-within:text-cyan-400 transition-colors" />
-                <input
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  placeholder="Enter your password"
-                  className="w-full bg-gray-800/50 text-white placeholder-gray-500 pl-11 pr-4 py-3 rounded-lg border border-gray-700 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 focus:outline-none transition-all"
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Forgot Password Link */}
-            <div className="flex justify-end">
-              <Link
-                to="/forgot-password"
-                className="text-sm text-cyan-400 hover:text-cyan-300 transition-colors"
-              >
-                Forgot password?
-              </Link>
-            </div>
-
-            {/* Login Button */}
             <button
-              type="submit"
-              disabled={loading}
+              type="button"
+              onClick={handleMicrosoftLogin}
+              disabled={loading || authLoading}
               className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold py-3 rounded-lg shadow-lg shadow-cyan-500/30 transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
             >
-              {loading ? (
+              {loading || authLoading ? (
                 <>
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  <span>Authenticating...</span>
+                  <ArrowPathIcon className="w-5 h-5 animate-spin" />
+                  <span>Connecting to Microsoft...</span>
                 </>
               ) : (
                 <>
-                  <span>Secure Login</span>
+                  <span>Continue with Microsoft</span>
                   <ArrowRightIcon className="w-5 h-5" />
                 </>
               )}
             </button>
-          </form>
+          </div>
 
           {/* Request Access Link */}
           <div className="mt-6 pt-6 border-t border-gray-700">
@@ -183,16 +122,6 @@ const Login = () => {
             <p className="text-xs text-gray-400 text-center">
               🔒 This is a secure government enterprise system. All access attempts are logged and monitored.
             </p>
-          </div>
-        </div>
-
-        {/* Demo Credentials */}
-        <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-          <p className="text-xs text-blue-300 font-semibold mb-2">Demo Credentials:</p>
-          <div className="text-xs text-gray-400 space-y-1">
-            <p>Org ID: <span className="text-white">SA-GOV-001</span></p>
-            <p>Email: <span className="text-white">admin@enterprise.sa</span></p>
-            <p>Password: <span className="text-white">admin123</span></p>
           </div>
         </div>
 

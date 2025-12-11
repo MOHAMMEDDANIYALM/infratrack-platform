@@ -33,7 +33,7 @@ class APIClient {
       if (response.status === 401) {
         localStorage.removeItem('token');
         localStorage.removeItem('refreshToken');
-        window.location.href = '/login';
+        window.location.href = '/';
       }
 
       const responseData = await response.json();
@@ -72,6 +72,9 @@ const api = new APIClient(API_URL);
 export const authAPI = {
   login: (organizationId, email, password) =>
     api.post('/auth/login', { organizationId, email, password }),
+
+  loginWithMicrosoft: (token) =>
+    api.post('/auth/microsoft', { token }),
 
   register: (organizationId, name, email, password, department, role) =>
     api.post('/auth/register', {

@@ -1,5 +1,6 @@
+import { useContext } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from '../context/AuthContext';
+import { AuthContext, AuthProvider } from '../context/AuthContext';
 import MainLayout from '../components/layout/MainLayout';
 import Login from '../pages/Login';
 import ForgotPassword from '../pages/ForgotPassword';
@@ -17,6 +18,27 @@ import AIops from '../pages/AIops';
 import HelpCenter from '../pages/HelpCenter';
 
 function AppRoutes() {
+  const ProtectedRoute = ({ children }) => {
+    const { token, loading } = useContext(AuthContext);
+
+    if (loading) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-950 text-white">
+          <div className="flex items-center space-x-3">
+            <div className="w-5 h-5 border-2 border-cyan-400/40 border-t-cyan-400 rounded-full animate-spin"></div>
+            <span>Verifying access...</span>
+          </div>
+        </div>
+      );
+    }
+
+    if (!token) {
+      return <Navigate to="/" replace />;
+    }
+
+    return children;
+  };
+
   return (
     <BrowserRouter>
       <AuthProvider>
@@ -28,7 +50,7 @@ function AppRoutes() {
           <Route path="/account-disabled" element={<AccountDisabled />} />
 
           {/* Protected Routes */}
-          <Route element={<MainLayout />}>
+          <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/servers" element={<Servers />} />
             <Route path="/kubernetes" element={<Kubernetes />} />
