@@ -39,8 +39,8 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Handle CORS preflight requests
-app.options('*', cors(corsOptions));
+// Handle CORS preflight requests (Express 5 compatible)
+app.options(/.*/, cors(corsOptions));
 
 // Health check
 app.get('/health', (req, res) => {
