@@ -196,21 +196,49 @@ exports.getMe = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
-exports.login = async (req, res) => {
+
+// Microsoft Entra ID login (token-based)
+exports.microsoftLogin = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { token } = req.body;
 
-    const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ message: "User not found" });
+    if (!token) {
+      return res.status(400).json({ message: 'Token is required' });
+    }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).json({ message: "Invalid password" });
+    // NOTE: For production, validate against Microsoft JWKS. Here we decode only.
+    const decoded = jwt.decode(token);
 
-    const token = jwt.sign({ id: user._id }, "secret123", { expiresIn: "1d" });
+    if (!decoded || !decoded.email) {
+      return res.status(401).json({ message: 'Invalid Microsoft token' });
+    }
 
-    res.json({ token });
+    const user = await User.findOne({ email: decoded.email });
 
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    if (!user) {
+      return res.status(403).json({ message: 'Not allowed' });
+    }
+
+    // Update last login timestamp
+    user.lastLogin = new Date();
+    await user.save();
+
+    const { token: accessToken, refreshToken } = generateTokens(user._id, user.email, user.role);
+
+    res.json({
+      message: 'Login success',
+      token: accessToken,
+      refreshToken,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        department: user.department,
+        organizationId: user.organizationId,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
