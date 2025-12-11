@@ -10,10 +10,24 @@ const projectRoutes = require('./routes/projectRoutes');
 
 const app = express();
 
-// CORS Configuration: Same origin in production (frontend served by backend)
+// CORS Configuration
+const allowedOrigins = [
+  'http://localhost:5173', // Local dev
+  'http://localhost:3000',  // Alternative local
+  'https://infratrack-backend.azurewebsites.net', // Azure prod
+];
+
 const corsOptions = {
-  origin: process.env.NODE_ENV === 'production' ? true : 'http://localhost:5173',
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV === 'production') {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 };
 
 // Middleware

@@ -210,13 +210,17 @@ exports.microsoftLogin = async (req, res) => {
     const decoded = jwt.decode(token);
 
     if (!decoded || !decoded.email) {
+      console.error('Invalid or missing email in Microsoft token:', decoded);
       return res.status(401).json({ message: 'Invalid Microsoft token' });
     }
+
+    console.log('Microsoft login attempt for email:', decoded.email);
 
     const user = await User.findOne({ email: decoded.email });
 
     if (!user) {
-      return res.status(403).json({ message: 'Not allowed' });
+      console.warn('User not found in database:', decoded.email);
+      return res.status(403).json({ message: 'User not found. Please contact your administrator.' });
     }
 
     // Update last login timestamp
@@ -239,6 +243,7 @@ exports.microsoftLogin = async (req, res) => {
       },
     });
   } catch (error) {
+    console.error('Microsoft login error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
