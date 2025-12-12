@@ -10,6 +10,10 @@ const msalConfig = {
       : undefined,
     redirectUri: window.location.origin,
   },
+  cache: {
+    cacheLocation: 'localStorage',
+    storeAuthStateInCookie: true,
+  },
 };
 
 const microsoftScopes = ['User.Read', 'email', 'profile', 'openid'];
