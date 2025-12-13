@@ -4,8 +4,7 @@ const connectDB = async () => {
   const mongoUri = process.env.MONGODB_URI;
   
   if (!mongoUri) {
-    console.error('⚠️ MONGODB_URI not set - database features disabled');
-    return;
+    throw new Error('MONGODB_URI not set');
   }
 
   try {
@@ -25,10 +24,10 @@ const connectDB = async () => {
     mongoose.set('bufferCommands', false);
     mongoose.set('bufferTimeoutMS', 20000);
 
-    console.log('✅ Cosmos DB Connected:', mongoUri.substring(0, 30) + '...');
+    console.log('✅ Cosmos DB Connected');
   } catch (error) {
     console.error('❌ Database connection failed:', error.message);
-    console.error('   Check MONGODB_URI in Azure App Settings');
+    throw error;
   }
 };
 

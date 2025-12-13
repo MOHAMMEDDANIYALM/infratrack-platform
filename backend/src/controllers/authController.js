@@ -208,11 +208,6 @@ exports.microsoftLogin = async (req, res) => {
       return res.status(400).json({ message: 'Token is required' });
     }
 
-    // Ensure DB is connected
-    if (mongoose.connection.readyState !== 1) {
-      console.error('Microsoft login blocked: database not connected');
-      return res.status(503).json({ message: 'Database not connected. Please check MONGODB_URI.' });
-    }
 
     const tenantId = process.env.MICROSOFT_TENANT_ID;
     const clientId = process.env.MICROSOFT_CLIENT_ID;
