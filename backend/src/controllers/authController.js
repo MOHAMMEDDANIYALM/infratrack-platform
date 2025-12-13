@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const jwksClient = require('jwks-rsa');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-refresh-secret';
@@ -198,7 +199,7 @@ exports.getMe = async (req, res) => {
   }
 };
 
-// Microsoft Entra ID login (token-based)
+// Microsoft Entra ID login (token verification only - no token generation from backend)
 exports.microsoftLogin = async (req, res) => {
   try {
     const { token } = req.body;
@@ -207,60 +208,93 @@ exports.microsoftLogin = async (req, res) => {
       return res.status(400).json({ message: 'Token is required' });
     }
 
-    // Ensure DB is connected to avoid opaque server errors
+    // Ensure DB is connected
     if (mongoose.connection.readyState !== 1) {
       console.error('Microsoft login blocked: database not connected');
-      return res.status(503).json({ message: 'Database not connected. Please check MONGODB_URI in Azure App Settings.' });
+      return res.status(503).json({ message: 'Database not connected. Please check MONGODB_URI.' });
     }
 
-    // NOTE: For production, validate against Microsoft JWKS. Here we decode only.
-    const decoded = jwt.decode(token);
+    const tenantId = process.env.MICROSOFT_TENANT_ID;
+    const clientId = process.env.MICROSOFT_CLIENT_ID;
+    const allowedDomains = (process.env.ALLOWED_LOGIN_DOMAINS || '')
+      .split(',')
+      .map(d => d.trim().toLowerCase())
+      .filter(Boolean);
 
+    if (!tenantId || !clientId) {
+      return res.status(500).json({ message: 'Microsoft login not configured: missing tenant or client ID' });
+    }
+
+    // Get Microsoft JWKS keys for signature verification
+    const jwksUri = `https://login.microsoftonline.com/${tenantId}/discovery/v2.0/keys`;
+    const client = jwksClient({ jwksUri, cache: true, rateLimit: true });
+
+    let decoded;
+    try {
+      // Decode header to get key ID
+      const decodedHeader = jwt.decode(token, { complete: true });
+      if (!decodedHeader || !decodedHeader.header || !decodedHeader.header.kid) {
+        console.error('Invalid Microsoft token header');
+        return res.status(401).json({ message: 'Invalid Microsoft token' });
+      }
+
+      // Get public key from JWKS
+      const signingKey = await client.getSigningKey(decodedHeader.header.kid);
+      const publicKey = signingKey.getPublicKey();
+
+      // Verify token signature and claims
+      // Audience must match the SPA client ID
+      // Issuer must be the tenant-specific login endpoint
+      decoded = jwt.verify(token, publicKey, {
+        algorithms: ['RS256'],
+        audience: clientId, // Must be the SPA client ID (3f2cb0db-...)
+        issuer: `https://login.microsoftonline.com/${tenantId}/v2.0`,
+      });
+    } catch (verifyErr) {
+      console.error('Microsoft token verification failed:', verifyErr.message);
+      return res.status(401).json({ message: 'Invalid Microsoft token: ' + verifyErr.message });
+    }
+
+    // Extract email from token claims
     const email = decoded?.email || decoded?.preferred_username;
 
     if (!decoded || !email) {
-      console.error('Invalid or missing email in Microsoft token:', decoded);
-      return res.status(401).json({ message: 'Invalid Microsoft token' });
+      console.error('Missing email in Microsoft token');
+      return res.status(401).json({ message: 'Invalid Microsoft token: missing email' });
     }
 
-    console.log('Microsoft login attempt for email:', email);
+    console.log('Microsoft login verified for:', email);
 
-    let user = await User.findOne({ email });
-
-    // Auto-create user on first Microsoft login
-    if (!user) {
-      try {
-        console.log('Creating new user from Microsoft token:', decoded.email);
-        
-        // Hash a random password for SSO users (they won't use password login)
-        const randomPassword = require('crypto').randomBytes(16).toString('hex');
-        const hashedPassword = await bcrypt.hash(randomPassword, 10);
-        
-        user = await User.create({
-          email,
-          name: decoded.name || decoded.given_name || decoded.family_name || email,
-          organizationId: decoded.oid || decoded.tid || 'MICROSOFT_TENANT', // Fallback to tenant/object id
-          role: 'Viewer', // Default role for new users
-          department: 'Engineering',
-          status: 'active',
-          password: hashedPassword,
-        });
-        
-        console.log('New user created successfully:', user._id, user.email);
-      } catch (createError) {
-        console.error('Error creating new user:', createError.message);
-        return res.status(500).json({ message: 'Failed to create user account', error: createError.message });
+    // OPTIONAL: Enforce domain allowlist (e.g., allow only @yourorg.com)
+    if (allowedDomains.length > 0) {
+      const emailDomain = (email || '').split('@')[1]?.toLowerCase();
+      if (!emailDomain || !allowedDomains.includes(emailDomain)) {
+        console.error('Email domain not allowed:', emailDomain);
+        return res.status(403).json({ message: 'Email domain not allowed' });
       }
+    }
+
+    // Check if user exists and is active (no auto-provisioning)
+    let user = await User.findOne({ email });
+    if (!user) {
+      console.error('User not found in database:', email);
+      return res.status(403).json({ message: 'User not authorized. Please contact admin.' });
+    }
+
+    if (user.status !== 'active') {
+      console.error('User account not active:', email, user.status);
+      return res.status(403).json({ message: 'Account is not active. Please contact admin.' });
     }
 
     // Update last login timestamp
     user.lastLogin = new Date();
     await user.save();
 
+    // Generate backend JWT tokens (for session management within app)
     const { token: accessToken, refreshToken } = generateTokens(user._id, user.email, user.role);
 
     res.json({
-      message: 'Login success',
+      message: 'Login successful',
       token: accessToken,
       refreshToken,
       user: {
@@ -274,6 +308,9 @@ exports.microsoftLogin = async (req, res) => {
     });
   } catch (error) {
     console.error('Microsoft login error:', error.message, error.stack);
-    res.status(500).json({ message: 'Server error', error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error' });
+    res.status(500).json({ 
+      message: 'Server error', 
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error' 
+    });
   }
 };
