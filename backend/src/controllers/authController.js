@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const jwksClient = require('jwks-rsa');
+const { verifyMicrosoftIdToken } = require('../utils/verifyMicrosoftToken');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-refresh-secret';
@@ -199,17 +199,10 @@ exports.getMe = async (req, res) => {
   }
 };
 
-// Microsoft Entra ID login (token verification only - no token generation from backend)
+// Microsoft Entra ID login: verify Microsoft ID token via JWKS, then issue app JWT
 exports.microsoftLogin = async (req, res) => {
   try {
     const { token } = req.body;
-
-    if (!token) {
-      return res.status(400).json({ message: 'Token is required' });
-    }
-
-    console.log('Received token (first 50 chars):', token.substring(0, 50));
-
     const tenantId = process.env.MICROSOFT_TENANT_ID;
     const clientId = process.env.MICROSOFT_CLIENT_ID;
     const allowedDomains = (process.env.ALLOWED_LOGIN_DOMAINS || '')
@@ -217,53 +210,14 @@ exports.microsoftLogin = async (req, res) => {
       .map(d => d.trim().toLowerCase())
       .filter(Boolean);
 
-    if (!tenantId || !clientId) {
-      return res.status(500).json({ message: 'Microsoft login not configured: missing tenant or client ID' });
-    }
-
-    console.log('Using tenantId:', tenantId, 'clientId:', clientId);
-
-    // Get Microsoft JWKS keys for signature verification
-    const jwksUri = `https://login.microsoftonline.com/${tenantId}/discovery/v2.0/keys`;
-    const client = jwksClient({ jwksUri, cache: true, rateLimit: true });
-
-    let decoded;
+    let email;
     try {
-      // Decode header to get key ID
-      const decodedHeader = jwt.decode(token, { complete: true });
-      console.log('Decoded header:', decodedHeader ? 'Success' : 'Failed', decodedHeader?.header?.kid);
-      
-      if (!decodedHeader || !decodedHeader.header || !decodedHeader.header.kid) {
-        console.error('Invalid Microsoft token header - full decode:', decodedHeader);
-        return res.status(401).json({ message: 'Invalid Microsoft token: unable to decode header' });
-      }
-
-      // Get public key from JWKS
-      const signingKey = await client.getSigningKey(decodedHeader.header.kid);
-      const publicKey = signingKey.getPublicKey();
-
-      // Verify token signature and claims
-      // Audience must match the SPA client ID
-      // Issuer must be the tenant-specific login endpoint
-      decoded = jwt.verify(token, publicKey, {
-        algorithms: ['RS256'],
-        audience: clientId, // Must be the SPA client ID (3f2cb0db-...)
-        issuer: `https://login.microsoftonline.com/${tenantId}/v2.0`,
-      });
+      const result = await verifyMicrosoftIdToken({ token, clientId, tenantId });
+      email = result.email;
     } catch (verifyErr) {
       console.error('Microsoft token verification failed:', verifyErr.message);
       return res.status(401).json({ message: 'Invalid Microsoft token: ' + verifyErr.message });
     }
-
-    // Extract email from token claims
-    const email = decoded?.email || decoded?.preferred_username;
-
-    if (!decoded || !email) {
-      console.error('Missing email in Microsoft token');
-      return res.status(401).json({ message: 'Invalid Microsoft token: missing email' });
-    }
-
-    console.log('Microsoft login verified for:', email);
 
     // OPTIONAL: Enforce domain allowlist (e.g., allow only @yourorg.com)
     if (allowedDomains.length > 0) {
@@ -308,9 +262,9 @@ exports.microsoftLogin = async (req, res) => {
     });
   } catch (error) {
     console.error('Microsoft login error:', error.message, error.stack);
-    res.status(500).json({ 
-      message: 'Server error', 
-      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error' 
+    res.status(500).json({
+      message: 'Server error',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
     });
   }
 };
