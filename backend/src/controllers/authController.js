@@ -208,6 +208,7 @@ exports.microsoftLogin = async (req, res) => {
       return res.status(400).json({ message: 'Token is required' });
     }
 
+    console.log('Received token (first 50 chars):', token.substring(0, 50));
 
     const tenantId = process.env.MICROSOFT_TENANT_ID;
     const clientId = process.env.MICROSOFT_CLIENT_ID;
@@ -220,6 +221,8 @@ exports.microsoftLogin = async (req, res) => {
       return res.status(500).json({ message: 'Microsoft login not configured: missing tenant or client ID' });
     }
 
+    console.log('Using tenantId:', tenantId, 'clientId:', clientId);
+
     // Get Microsoft JWKS keys for signature verification
     const jwksUri = `https://login.microsoftonline.com/${tenantId}/discovery/v2.0/keys`;
     const client = jwksClient({ jwksUri, cache: true, rateLimit: true });
@@ -228,9 +231,11 @@ exports.microsoftLogin = async (req, res) => {
     try {
       // Decode header to get key ID
       const decodedHeader = jwt.decode(token, { complete: true });
+      console.log('Decoded header:', decodedHeader ? 'Success' : 'Failed', decodedHeader?.header?.kid);
+      
       if (!decodedHeader || !decodedHeader.header || !decodedHeader.header.kid) {
-        console.error('Invalid Microsoft token header');
-        return res.status(401).json({ message: 'Invalid Microsoft token' });
+        console.error('Invalid Microsoft token header - full decode:', decodedHeader);
+        return res.status(401).json({ message: 'Invalid Microsoft token: unable to decode header' });
       }
 
       // Get public key from JWKS
