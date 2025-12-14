@@ -9,7 +9,7 @@ RUN corepack enable
 FROM base AS frontend
 WORKDIR /app/frontend
 COPY frontend/package.json frontend/package-lock.json* ./
-RUN npm ci --only=production
+RUN npm ci
 COPY frontend ./
 RUN npm run build
 
@@ -17,7 +17,7 @@ RUN npm run build
 FROM base AS backend
 WORKDIR /app/backend
 COPY backend/package.json backend/package-lock.json* ./
-RUN npm ci --only=production
+RUN npm ci
 COPY backend ./
 
 # Copy built frontend into backend public folder
@@ -28,7 +28,7 @@ FROM node:20-alpine AS runtime
 ENV NODE_ENV=production
 WORKDIR /app/backend
 
-# Copy backend from build stage
+# Copy backend from build stage (includes node_modules)
 COPY --from=backend /app/backend /app/backend
 
 # Expose default container port (informational)
