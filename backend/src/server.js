@@ -112,19 +112,25 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start server only after DB connects
+// Start server only after attempting DB connection
 const PORT = process.env.PORT || 5000;
 (async () => {
   try {
-    await connectDB();
+    const dbConnected = await connectDB();
+    
     server.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 InfraTrack Backend running on port ${PORT}`);
       console.log(`📡 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🔌 WebSocket server initialized`);
       console.log(`📍 Public path: ${path.join(__dirname, '../public')}`);
+      if (dbConnected) {
+        console.log('✅ Database is connected');
+      } else {
+        console.warn('⚠️  Warning: Database not connected - set MONGODB_URI in environment');
+      }
     });
   } catch (err) {
-    console.error('❌ Failed to start server due to DB error:', err.message);
+    console.error('❌ Critical startup error:', err.message);
     process.exit(1);
   }
 })();
