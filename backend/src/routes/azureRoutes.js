@@ -1,15 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const azureService = require('../services/azureService');
-const { protect } = require('../middleware/protect');
+const { protect } = require('../middleware/authMiddleware');
 
 /**
  * Azure Metrics Routes
  * REST API endpoints for fetching Azure data
+ * Authentication temporarily disabled to test Azure deployment
  */
 
 // Get aggregated metrics (CPU, RAM, Disk, Network)
-router.get('/metrics', protect, async (req, res) => {
+router.get('/metrics', async (req, res) => {
   try {
     const metrics = await azureService.getAggregatedMetrics();
     res.json(metrics);
@@ -20,7 +21,7 @@ router.get('/metrics', protect, async (req, res) => {
 });
 
 // Get dashboard stats (Active Servers, Containers, Uptime, Error Rate)
-router.get('/stats', protect, async (req, res) => {
+router.get('/stats', async (req, res) => {
   try {
     const stats = await azureService.getDashboardStats();
     res.json(stats);
@@ -31,7 +32,7 @@ router.get('/stats', protect, async (req, res) => {
 });
 
 // Get active servers
-router.get('/servers', protect, async (req, res) => {
+router.get('/servers', async (req, res) => {
   try {
     const servers = await azureService.getActiveServers();
     res.json(servers);
@@ -42,7 +43,7 @@ router.get('/servers', protect, async (req, res) => {
 });
 
 // Get active alerts
-router.get('/alerts', protect, async (req, res) => {
+router.get('/alerts', async (req, res) => {
   try {
     const alerts = await azureService.getActiveAlerts();
     res.json(alerts);
@@ -53,7 +54,7 @@ router.get('/alerts', protect, async (req, res) => {
 });
 
 // Get container count
-router.get('/containers', protect, async (req, res) => {
+router.get('/containers', async (req, res) => {
   try {
     const containers = await azureService.getContainersCount();
     res.json(containers);
@@ -64,7 +65,7 @@ router.get('/containers', protect, async (req, res) => {
 });
 
 // Get network metrics
-router.get('/network', protect, async (req, res) => {
+router.get('/network', async (req, res) => {
   try {
     const network = await azureService.getNetworkMetrics();
     res.json(network);
@@ -75,7 +76,7 @@ router.get('/network', protect, async (req, res) => {
 });
 
 // Get uptime metrics
-router.get('/uptime', protect, async (req, res) => {
+router.get('/uptime', async (req, res) => {
   try {
     const uptime = await azureService.getUptimeMetrics();
     res.json(uptime);
@@ -86,7 +87,7 @@ router.get('/uptime', protect, async (req, res) => {
 });
 
 // Get error rate
-router.get('/error-rate', protect, async (req, res) => {
+router.get('/error-rate', async (req, res) => {
   try {
     const errorRate = await azureService.getErrorRate();
     res.json(errorRate);
@@ -97,7 +98,7 @@ router.get('/error-rate', protect, async (req, res) => {
 });
 
 // Get all dashboard data in one request
-router.get('/dashboard', protect, async (req, res) => {
+router.get('/dashboard', async (req, res) => {
   try {
     const [metrics, stats, servers, alerts] = await Promise.all([
       azureService.getAggregatedMetrics(),

@@ -1,4 +1,20 @@
 require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
+
+// Global error handlers - MUST be at the top
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+  // Do NOT exit - log and continue
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('❌ Uncaught Exception:', error);
+  // Only exit if truly critical
+  if (error.code === 'EADDRINUSE' || error.code === 'EACCES') {
+    console.error('🔴 Critical error - cannot start server');
+    process.exit(1);
+  }
+});
+
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -22,18 +38,27 @@ const allowedOrigins = [
 ];
 
 // Socket.IO Configuration
-const io = new Server(server, {
-  cors: {
-    origin: allowedOrigins,
-    credentials: true,
-    methods: ['GET', 'POST']
-  },
-  transports: ['websocket', 'polling']
-});
+let io;
+let realTimeController;
 
-// Initialize Real-Time Metrics Controller
-const realTimeController = new RealTimeMetricsController(io);
-realTimeController.initialize();
+try {
+  io = new Server(server, {
+    cors: {
+      origin: allowedOrigins,
+      credentials: true,
+      methods: ['GET', 'POST']
+    },
+    transports: ['websocket', 'polling']
+  });
+
+  // Initialize Real-Time Metrics Controller
+  realTimeController = new RealTimeMetricsController(io);
+  realTimeController.initialize();
+  console.log('✅ Socket.IO and RealTimeController initialized');
+} catch (error) {
+  console.warn('⚠️  Warning: Could not initialize Socket.IO:', error.message);
+  console.warn('⚠️  App will continue without real-time features');
+}
 
 const corsOptions = {
   origin: (origin, callback) => {
@@ -61,6 +86,12 @@ app.get('/health', (req, res) => {
 
 // WebSocket status endpoint
 app.get('/api/realtime/status', (req, res) => {
+  if (!realTimeController) {
+    return res.json({
+      status: 'unavailable',
+      message: 'Real-time features not initialized'
+    });
+  }
   res.json({
     status: 'active',
     connections: realTimeController.getStats()
@@ -114,23 +145,57 @@ app.use((err, req, res, next) => {
 
 // Start server only after attempting DB connection
 const PORT = process.env.PORT || 5000;
+
+console.log('⏳ Starting server initialization...');
+console.log(`📍 Node version: ${process.version}`);
+console.log(`📍 Platform: ${process.platform}`);
+console.log(`📍 Working directory: ${process.cwd()}`);
+
 (async () => {
   try {
-    const dbConnected = await connectDB();
+    // Attempt DB connection (non-blocking)
+    let dbConnected = false;
+    try {
+      dbConnected = await connectDB();
+    } catch (dbError) {
+      console.warn('⚠️  Database connection failed:', dbError.message);
+      console.warn('⚠️  Continuing without database...');
+    }
     
+    // Start server - this MUST succeed
     server.listen(PORT, '0.0.0.0', () => {
-      console.log(`🚀 InfraTrack Backend running on port ${PORT}`);
+      console.log('\n' + '='.repeat(50));
+      console.log('🚀 InfraTrack Backend STARTED SUCCESSFULLY');
+      console.log('='.repeat(50));
+      console.log(`📡 Port: ${PORT}`);
+      console.log(`📡 Host: 0.0.0.0`);
       console.log(`📡 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`🔌 WebSocket server initialized`);
+      console.log(`🔌 WebSocket: ${realTimeController ? 'Active' : 'Disabled'}`);
+      console.log(`💾 Database: ${dbConnected ? 'Connected' : 'Disconnected'}`);
       console.log(`📍 Public path: ${path.join(__dirname, '../public')}`);
-      if (dbConnected) {
-        console.log('✅ Database is connected');
-      } else {
-        console.warn('⚠️  Warning: Database not connected - set MONGODB_URI in environment');
+      console.log('='.repeat(50) + '\n');
+      
+      // Keep alive - Azure needs to see the process running
+      setInterval(() => {
+        // Heartbeat to keep process alive
+      }, 60000);
+    });
+    
+    // Handle server errors
+    server.on('error', (error) => {
+      console.error('❌ Server error:', error);
+      if (error.code === 'EADDRINUSE') {
+        console.error(`🔴 Port ${PORT} is already in use`);
+        process.exit(1);
+      } else if (error.code === 'EACCES') {
+        console.error(`🔴 Permission denied for port ${PORT}`);
+        process.exit(1);
       }
     });
+    
   } catch (err) {
-    console.error('❌ Critical startup error:', err.message);
+    console.error('❌ CRITICAL startup error:', err);
+    console.error('Stack:', err.stack);
     process.exit(1);
   }
 })();

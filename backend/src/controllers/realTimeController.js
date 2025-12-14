@@ -1,4 +1,4 @@
-const azureService = require('./azureService');
+const azureService = require('../services/azureService');
 
 /**
  * Real-Time Metrics Controller using WebSockets
