@@ -55,4 +55,4 @@ jobs:
           resourceGroup: infratrack-rg
           imageToDeploy: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           location: centralindia
-          environmentName: infratrack-env
+          containerAppEnvironment: infratrack-env
