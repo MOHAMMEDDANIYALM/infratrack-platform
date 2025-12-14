@@ -15,6 +15,12 @@ const RealTimeMetricsController = require('./controllers/realTimeController');
 const app = express();
 const server = http.createServer(app);
 
+// CORS Configuration
+const allowedOrigins = [
+  process.env.FRONTEND_URL || 'http://localhost:5173',
+  'http://localhost:5173',
+];
+
 // Socket.IO Configuration
 const io = new Server(server, {
   cors: {
@@ -28,12 +34,6 @@ const io = new Server(server, {
 // Initialize Real-Time Metrics Controller
 const realTimeController = new RealTimeMetricsController(io);
 realTimeController.initialize();
-
-// CORS Configuration
-const allowedOrigins = [
-  process.env.FRONTEND_URL || 'http://localhost:5173',
-  'http://localhost:5173',
-];
 
 const corsOptions = {
   origin: (origin, callback) => {
