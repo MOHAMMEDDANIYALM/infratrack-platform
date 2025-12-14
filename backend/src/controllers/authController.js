@@ -12,7 +12,7 @@ const generateTokens = (userId, email, role) => {
   const token = jwt.sign(
     { userId, email, role },
     JWT_SECRET,
-    { expiresIn: '1h' }
+    { expiresIn: '1d' } // 1 day expiration as required
   );
 
   const refreshToken = jwt.sign(
@@ -24,16 +24,16 @@ const generateTokens = (userId, email, role) => {
   return { token, refreshToken };
 };
 
-// Login
+// Login - Email + Password only
 exports.login = async (req, res) => {
   try {
-    const { organizationId, email, password } = req.body;
+    const { email, password } = req.body;
 
-    if (!organizationId || !email || !password) {
-      return res.status(400).json({ message: 'Missing required fields' });
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email and password are required' });
     }
 
-    const user = await User.findOne({ email, organizationId });
+    const user = await User.findOne({ email });
 
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
@@ -73,32 +73,42 @@ exports.login = async (req, res) => {
   }
 };
 
-// Register
+// Register - Email + Password only
 exports.register = async (req, res) => {
   try {
-    const { organizationId, name, email, password, department, role } = req.body;
+    const { name, email, password, department, role } = req.body;
 
-    if (!organizationId || !name || !email || !password) {
-      return res.status(400).json({ message: 'Missing required fields' });
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: 'Name, email, and password are required' });
     }
 
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ message: 'Invalid email format' });
+    }
+
+    // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ message: 'User already exists' });
+      return res.status(400).json({ message: 'User already exists with this email' });
     }
 
+    // Hash password with bcrypt (10 rounds)
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Create new user (organizationId set to default 'infratrack')
     const user = await User.create({
-      organizationId,
+      organizationId: 'infratrack',
       name,
       email,
       password: hashedPassword,
       department: department || '',
       role: role || 'Viewer',
-      status: 'pending',
+      status: 'active', // Active by default
     });
 
+    // Generate JWT tokens (1 day expiration)
     const { token, refreshToken } = generateTokens(user._id, user.email, user.role);
 
     res.status(201).json({
@@ -110,7 +120,6 @@ exports.register = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
-        organizationId: user.organizationId,
       },
     });
   } catch (error) {
