@@ -1,3 +1,4 @@
+// Use same-origin API in production; VITE_API_URL can override
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 // Create axios-like instance
