@@ -11,23 +11,39 @@ const { MonitorClient } = require('@azure/arm-monitor');
  */
 class AzureService {
   constructor() {
-    this.credential = new DefaultAzureCredential();
     this.subscriptionId = process.env.AZURE_SUBSCRIPTION_ID;
     this.resourceGroupName = process.env.AZURE_RESOURCE_GROUP;
     this.logAnalyticsWorkspaceId = process.env.LOG_ANALYTICS_WORKSPACE_ID;
     
-    // Initialize Azure clients
-    this.monitorQueryClient = new MonitorQueryClient(this.credential);
-    this.resourcesClient = new ResourceManagementClient(this.credential, this.subscriptionId);
-    this.computeClient = new ComputeManagementClient(this.credential, this.subscriptionId);
-    this.containerClient = new ContainerInstanceManagementClient(this.credential, this.subscriptionId);
-    this.monitorClient = new MonitorClient(this.credential, this.subscriptionId);
+    // Only initialize Azure clients if credentials are available
+    if (this.subscriptionId && this.resourceGroupName) {
+      try {
+        this.credential = new DefaultAzureCredential();
+        this.monitorQueryClient = new MonitorQueryClient(this.credential);
+        this.resourcesClient = new ResourceManagementClient(this.credential, this.subscriptionId);
+        this.computeClient = new ComputeManagementClient(this.credential, this.subscriptionId);
+        this.containerClient = new ContainerInstanceManagementClient(this.credential, this.subscriptionId);
+        this.monitorClient = new MonitorClient(this.credential, this.subscriptionId);
+        console.log('✅ Azure clients initialized');
+      } catch (error) {
+        console.warn('⚠️  Azure credentials not available - using demo data:', error.message);
+        this.credential = null;
+      }
+    } else {
+      console.warn('⚠️  Azure configuration not set - using demo data');
+      this.credential = null;
+    }
   }
 
   /**
    * Get all active virtual machines and their metrics
    */
   async getActiveServers() {
+    // Return demo data if Azure is not configured
+    if (!this.credential || !this.computeClient) {
+      return this.getFallbackServers();
+    }
+    
     try {
       const vms = [];
       
