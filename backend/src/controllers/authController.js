@@ -69,7 +69,12 @@ exports.login = async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Login error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    const isDev = process.env.NODE_ENV !== 'production';
+    res.status(500).json({ 
+      message: 'Server error', 
+      error: isDev ? error.message : 'Internal server error',
+      details: isDev ? error.stack : undefined
+    });
   }
 };
 
@@ -124,7 +129,12 @@ exports.register = async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Register error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    const isDev = process.env.NODE_ENV !== 'production';
+    res.status(500).json({ 
+      message: 'Server error', 
+      error: isDev ? error.message : 'Internal server error',
+      details: isDev ? error.stack : undefined
+    });
   }
 };
 
