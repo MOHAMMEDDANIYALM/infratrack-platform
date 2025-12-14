@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const azureService = require('../services/azureService');
-const authMiddleware = require('../middleware/authMiddleware');
+const { protect } = require('../middleware/protect');
 
 /**
  * Azure Metrics Routes
@@ -9,7 +9,7 @@ const authMiddleware = require('../middleware/authMiddleware');
  */
 
 // Get aggregated metrics (CPU, RAM, Disk, Network)
-router.get('/metrics', authMiddleware, async (req, res) => {
+router.get('/metrics', protect, async (req, res) => {
   try {
     const metrics = await azureService.getAggregatedMetrics();
     res.json(metrics);
@@ -20,7 +20,7 @@ router.get('/metrics', authMiddleware, async (req, res) => {
 });
 
 // Get dashboard stats (Active Servers, Containers, Uptime, Error Rate)
-router.get('/stats', authMiddleware, async (req, res) => {
+router.get('/stats', protect, async (req, res) => {
   try {
     const stats = await azureService.getDashboardStats();
     res.json(stats);
@@ -31,7 +31,7 @@ router.get('/stats', authMiddleware, async (req, res) => {
 });
 
 // Get active servers
-router.get('/servers', authMiddleware, async (req, res) => {
+router.get('/servers', protect, async (req, res) => {
   try {
     const servers = await azureService.getActiveServers();
     res.json(servers);
@@ -42,7 +42,7 @@ router.get('/servers', authMiddleware, async (req, res) => {
 });
 
 // Get active alerts
-router.get('/alerts', authMiddleware, async (req, res) => {
+router.get('/alerts', protect, async (req, res) => {
   try {
     const alerts = await azureService.getActiveAlerts();
     res.json(alerts);
@@ -53,7 +53,7 @@ router.get('/alerts', authMiddleware, async (req, res) => {
 });
 
 // Get container count
-router.get('/containers', authMiddleware, async (req, res) => {
+router.get('/containers', protect, async (req, res) => {
   try {
     const containers = await azureService.getContainersCount();
     res.json(containers);
@@ -64,7 +64,7 @@ router.get('/containers', authMiddleware, async (req, res) => {
 });
 
 // Get network metrics
-router.get('/network', authMiddleware, async (req, res) => {
+router.get('/network', protect, async (req, res) => {
   try {
     const network = await azureService.getNetworkMetrics();
     res.json(network);
@@ -75,7 +75,7 @@ router.get('/network', authMiddleware, async (req, res) => {
 });
 
 // Get uptime metrics
-router.get('/uptime', authMiddleware, async (req, res) => {
+router.get('/uptime', protect, async (req, res) => {
   try {
     const uptime = await azureService.getUptimeMetrics();
     res.json(uptime);
@@ -86,7 +86,7 @@ router.get('/uptime', authMiddleware, async (req, res) => {
 });
 
 // Get error rate
-router.get('/error-rate', authMiddleware, async (req, res) => {
+router.get('/error-rate', protect, async (req, res) => {
   try {
     const errorRate = await azureService.getErrorRate();
     res.json(errorRate);
@@ -97,7 +97,7 @@ router.get('/error-rate', authMiddleware, async (req, res) => {
 });
 
 // Get all dashboard data in one request
-router.get('/dashboard', authMiddleware, async (req, res) => {
+router.get('/dashboard', protect, async (req, res) => {
   try {
     const [metrics, stats, servers, alerts] = await Promise.all([
       azureService.getAggregatedMetrics(),
