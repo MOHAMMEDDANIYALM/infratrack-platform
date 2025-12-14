@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { io } from 'socket.io-client';
 import {
   CpuChipIcon,
   CircleStackIcon,
@@ -18,45 +19,98 @@ const Dashboard = () => {
     network: 1234,
   });
 
+  const [stats, setStats] = useState([
+    { name: 'Active Servers', value: '248', change: '+12', icon: ServerIcon, color: 'cyan' },
+    { name: 'Containers', value: '1,429', change: '+54', icon: CircleStackIcon, color: 'blue' },
+    { name: 'Uptime', value: '99.97%', change: '+0.02', icon: CheckCircleIcon, color: 'green' },
+    { name: 'Error Rate', value: '0.03%', change: '-0.01', icon: ExclamationTriangleIcon, color: 'red' },
+  ]);
+
+  const [activeServers, setActiveServers] = useState([
+    { name: 'EU-WEST-2-APP-01', status: 'healthy', cpu: 67, ram: 54, uptime: '45d 12h' },
+    { name: 'US-EAST-1-DB-03', status: 'warning', cpu: 89, ram: 78, uptime: '120d 5h' },
+    { name: 'ASIA-SOUTH-WEB-05', status: 'healthy', cpu: 34, ram: 42, uptime: '89d 18h' },
+    { name: 'EU-CENTRAL-API-02', status: 'healthy', cpu: 45, ram: 61, uptime: '67d 9h' },
+  ]);
+
+  const [recentAlerts, setRecentAlerts] = useState([
+    { id: 1, type: 'critical', server: 'EU-WEST-2-APP-01', message: 'CPU usage exceeded 95%', time: '2 min ago' },
+    { id: 2, type: 'warning', server: 'US-EAST-1-DB-03', message: 'High memory consumption', time: '15 min ago' },
+    { id: 3, type: 'info', server: 'ASIA-SOUTH-WEB-05', message: 'Scheduled maintenance upcoming', time: '1 hour ago' },
+  ]);
+
   const [refreshing, setRefreshing] = useState(false);
+  const [connected, setConnected] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState('Just now');
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setMetrics({
-        cpu: Math.floor(Math.random() * 30) + 50,
-        ram: Math.floor(Math.random() * 40) + 40,
-        disk: Math.floor(Math.random() * 30) + 60,
-        network: Math.floor(Math.random() * 2000) + 800,
-      });
-    }, 5000);
+    // Connect to WebSocket server
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+    const socket = io(backendUrl, {
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionAttempts: 5
+    });
 
-    return () => clearInterval(interval);
+    socket.on('connect', () => {
+      console.log('Connected to real-time metrics server');
+      setConnected(true);
+    });
+
+    socket.on('disconnect', () => {
+      console.log('Disconnected from real-time metrics server');
+      setConnected(false);
+    });
+
+    // Listen for dashboard updates
+    socket.on('dashboard:update', (data) => {
+      console.log('Received dashboard update:', data);
+      
+      // Update metrics
+      if (data.metrics) {
+        setMetrics(data.metrics);
+      }
+
+      // Update stats
+      if (data.stats) {
+        const updatedStats = [
+          { name: 'Active Servers', value: data.stats.activeServers.value, change: data.stats.activeServers.change, icon: ServerIcon, color: 'cyan' },
+          { name: 'Containers', value: data.stats.containers.value, change: data.stats.containers.change, icon: CircleStackIcon, color: 'blue' },
+          { name: 'Uptime', value: data.stats.uptime.value, change: data.stats.uptime.change, icon: CheckCircleIcon, color: 'green' },
+          { name: 'Error Rate', value: data.stats.errorRate.value, change: data.stats.errorRate.change, icon: ExclamationTriangleIcon, color: 'red' },
+        ];
+        setStats(updatedStats);
+      }
+
+      // Update active servers
+      if (data.servers && data.servers.length > 0) {
+        setActiveServers(data.servers.slice(0, 4)); // Show top 4 servers
+      }
+
+      // Update alerts
+      if (data.alerts && data.alerts.length > 0) {
+        setRecentAlerts(data.alerts.slice(0, 3)); // Show top 3 alerts
+      }
+
+      // Update timestamp
+      setLastUpdate('Just now');
+    });
+
+    socket.on('error', (error) => {
+      console.error('WebSocket error:', error);
+    });
+
+    // Cleanup on unmount
+    return () => {
+      socket.disconnect();
+    };
   }, []);
 
   const handleRefresh = () => {
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), 1000);
   };
-
-  const stats = [
-    { name: 'Active Servers', value: '248', change: '+12', icon: ServerIcon, color: 'cyan' },
-    { name: 'Containers', value: '1,429', change: '+54', icon: CircleStackIcon, color: 'blue' },
-    { name: 'Uptime', value: '99.97%', change: '+0.02', icon: CheckCircleIcon, color: 'green' },
-    { name: 'Error Rate', value: '0.03%', change: '-0.01', icon: ExclamationTriangleIcon, color: 'red' },
-  ];
-
-  const recentAlerts = [
-    { id: 1, type: 'critical', server: 'EU-WEST-2-APP-01', message: 'CPU usage exceeded 95%', time: '2 min ago' },
-    { id: 2, type: 'warning', server: 'US-EAST-1-DB-03', message: 'High memory consumption', time: '15 min ago' },
-    { id: 3, type: 'info', server: 'ASIA-SOUTH-WEB-05', message: 'Scheduled maintenance upcoming', time: '1 hour ago' },
-  ];
-
-  const activeServers = [
-    { name: 'EU-WEST-2-APP-01', status: 'healthy', cpu: 67, ram: 54, uptime: '45d 12h' },
-    { name: 'US-EAST-1-DB-03', status: 'warning', cpu: 89, ram: 78, uptime: '120d 5h' },
-    { name: 'ASIA-SOUTH-WEB-05', status: 'healthy', cpu: 34, ram: 42, uptime: '89d 18h' },
-    { name: 'EU-CENTRAL-API-02', status: 'healthy', cpu: 45, ram: 61, uptime: '67d 9h' },
-  ];
 
   const getMetricColor = (value) => {
     if (value >= 80) return 'text-red-400 border-red-500/30 bg-red-500/10';
@@ -287,10 +341,12 @@ const Dashboard = () => {
       <div className="bg-gradient-to-r from-green-600/20 to-cyan-600/20 border border-green-500/30 rounded-xl p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-            <span className="text-white font-semibold">All Systems Operational</span>
+            <div className={`w-3 h-3 rounded-full ${connected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+            <span className="text-white font-semibold">
+              {connected ? 'All Systems Operational - Live Data' : 'Connecting to Azure...'}
+            </span>
           </div>
-          <span className="text-gray-400 text-sm">Last updated: Just now</span>
+          <span className="text-gray-400 text-sm">Last updated: {lastUpdate}</span>
         </div>
       </div>
     </div>

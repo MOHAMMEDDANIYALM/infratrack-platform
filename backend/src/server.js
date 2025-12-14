@@ -3,12 +3,31 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const http = require('http');
+const { Server } = require('socket.io');
 const connectDB = require('./config/database');
 
 const authRoutes = require('./routes/authRoutes');
 const projectRoutes = require('./routes/projectRoutes');
+const azureRoutes = require('./routes/azureRoutes');
+const RealTimeMetricsController = require('./controllers/realTimeController');
 
 const app = express();
+const server = http.createServer(app);
+
+// Socket.IO Configuration
+const io = new Server(server, {
+  cors: {
+    origin: allowedOrigins,
+    credentials: true,
+    methods: ['GET', 'POST']
+  },
+  transports: ['websocket', 'polling']
+});
+
+// Initialize Real-Time Metrics Controller
+const realTimeController = new RealTimeMetricsController(io);
+realTimeController.initialize();
 
 // CORS Configuration
 const allowedOrigins = [
@@ -40,9 +59,18 @@ app.get('/health', (req, res) => {
   res.json({ status: 'Backend is running ✅' });
 });
 
+// WebSocket status endpoint
+app.get('/api/realtime/status', (req, res) => {
+  res.json({
+    status: 'active',
+    connections: realTimeController.getStats()
+  });
+});
+
 // API Routes - MUST come BEFORE static files and wildcard
 app.use('/api/auth', authRoutes);
 app.use('/api', projectRoutes);
+app.use('/api/azure', azureRoutes);
 
 // Serve static files from React frontend build (ONLY in production)
 if (process.env.NODE_ENV === 'production') {
@@ -89,9 +117,10 @@ const PORT = process.env.PORT || 5000;
 (async () => {
   try {
     await connectDB();
-    app.listen(PORT, '0.0.0.0', () => {
+    server.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 InfraTrack Backend running on port ${PORT}`);
       console.log(`📡 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`🔌 WebSocket server initialized`);
       console.log(`📍 Public path: ${path.join(__dirname, '../public')}`);
     });
   } catch (err) {
