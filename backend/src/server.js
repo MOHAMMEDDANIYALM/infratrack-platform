@@ -144,12 +144,14 @@ app.use((err, req, res, next) => {
 });
 
 // Start server only after attempting DB connection
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 8080;
 
-console.log('⏳ Starting server initialization...');
-console.log(`📍 Node version: ${process.version}`);
-console.log(`📍 Platform: ${process.platform}`);
-console.log(`📍 Working directory: ${process.cwd()}`);
+console.log(`Starting InfraTrack on port ${PORT}...`);
+console.log(`Env: ${process.env.NODE_ENV || 'development'}`);
+
+if (!process.env.JWT_SECRET || !process.env.JWT_REFRESH_SECRET) {
+  console.warn('JWT secrets are not set. Set JWT_SECRET and JWT_REFRESH_SECRET for production.');
+}
 
 (async () => {
   try {
@@ -164,21 +166,10 @@ console.log(`📍 Working directory: ${process.cwd()}`);
     
     // Start server - this MUST succeed
     server.listen(PORT, '0.0.0.0', () => {
-      console.log('\n' + '='.repeat(50));
-      console.log('🚀 InfraTrack Backend STARTED SUCCESSFULLY');
-      console.log('='.repeat(50));
-      console.log(`📡 Port: ${PORT}`);
-      console.log(`📡 Host: 0.0.0.0`);
-      console.log(`📡 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`🔌 WebSocket: ${realTimeController ? 'Active' : 'Disabled'}`);
-      console.log(`💾 Database: ${dbConnected ? 'Connected' : 'Disconnected'}`);
-      console.log(`📍 Public path: ${path.join(__dirname, '../public')}`);
-      console.log('='.repeat(50) + '\n');
+      console.log(`InfraTrack started (env=${process.env.NODE_ENV || 'development'})`);
       
       // Keep alive - Azure needs to see the process running
-      setInterval(() => {
-        // Heartbeat to keep process alive
-      }, 60000);
+      setInterval(() => {}, 60000);
     });
     
     // Handle server errors
@@ -194,8 +185,7 @@ console.log(`📍 Working directory: ${process.cwd()}`);
     });
     
   } catch (err) {
-    console.error('❌ CRITICAL startup error:', err);
-    console.error('Stack:', err.stack);
+    console.error('Startup error:', err);
     process.exit(1);
   }
 })();

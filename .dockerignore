@@ -1,0 +1,14 @@
+# Exclude unnecessary files from Docker build context
+node_modules
+**/node_modules
+.git
+.gitignore
+.env
+**/.env
+Dockerfile*
+**/*.log
+**/.vscode
+**/.DS_Store
+
+# Build outputs not needed unless copied explicitly
+frontend/dist
