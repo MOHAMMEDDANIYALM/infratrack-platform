@@ -4,17 +4,18 @@ const jwksClient = require('jwks-rsa');
 // Cached JWKS client per tenant to avoid repeated fetches
 const clientCache = new Map();
 
-const getJwksClient = (tenantId) => {
-  if (clientCache.has(tenantId)) return clientCache.get(tenantId);
+const getJwksClient = (authoritySegment) => {
+  const key = authoritySegment;
+  if (clientCache.has(key)) return clientCache.get(key);
   const client = jwksClient({
-    jwksUri: `https://login.microsoftonline.com/${tenantId}/discovery/v2.0/keys`,
+    jwksUri: `https://login.microsoftonline.com/${authoritySegment}/discovery/v2.0/keys`,
     cache: true,
     cacheMaxEntries: 5,
-    cacheMaxAge: 10 * 60 * 1000, // 10 minutes
+    cacheMaxAge: 10 * 60 * 1000,
     rateLimit: true,
     jwksRequestsPerMinute: 10,
   });
-  clientCache.set(tenantId, client);
+  clientCache.set(key, client);
   return client;
 };
 
@@ -33,18 +34,31 @@ async function verifyMicrosoftIdToken({ token, clientId, tenantId }) {
     throw new Error('Invalid Microsoft token: missing header');
   }
 
-  const client = getJwksClient(tenantId);
+  // Support single-tenant, common, and consumers based on configuration
+  const allowPersonal = String(process.env.ALLOW_PERSONAL_ACCOUNTS || 'false').toLowerCase() === 'true';
+  const authoritySegment = allowPersonal ? 'consumers' : tenantId; // use consumers JWKS if allowing personal accounts
+  const client = getJwksClient(authoritySegment);
   const signingKey = await client.getSigningKey(decodedHeader.header.kid);
   const publicKey = signingKey.getPublicKey();
+
+  // Accept issuer based on configuration
+  const validIssuers = allowPersonal
+    ? [
+        'https://login.microsoftonline.com/consumers/v2.0',
+        'https://login.microsoftonline.com/common/v2.0',
+      ]
+    : [
+        `https://login.microsoftonline.com/${tenantId}/v2.0`,
+      ];
 
   const payload = jwt.verify(token, publicKey, {
     algorithms: ['RS256'],
     audience: clientId,
-    issuer: `https://login.microsoftonline.com/${tenantId}/v2.0`,
+    issuer: validIssuers,
   });
 
-  // Additional safety: ensure token belongs to the same tenant
-  if (payload.tid && payload.tid !== tenantId) {
+  // Additional safety: ensure token belongs to the same tenant when personal accounts are not allowed
+  if (!allowPersonal && payload.tid && payload.tid !== tenantId) {
     throw new Error('Invalid Microsoft token: tenant mismatch');
   }
 

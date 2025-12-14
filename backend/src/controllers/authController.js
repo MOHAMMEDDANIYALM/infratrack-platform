@@ -209,6 +209,11 @@ exports.microsoftLogin = async (req, res) => {
       .split(',')
       .map(d => d.trim().toLowerCase())
       .filter(Boolean);
+    const allowedEmails = (process.env.ALLOWED_LOGIN_EMAILS || '')
+      .split(',')
+      .map(e => e.trim().toLowerCase())
+      .filter(Boolean);
+    const autoProvision = String(process.env.AUTO_PROVISION_MS_USERS || 'false').toLowerCase() === 'true';
 
     let email;
     try {
@@ -219,20 +224,39 @@ exports.microsoftLogin = async (req, res) => {
       return res.status(401).json({ message: 'Invalid Microsoft token: ' + verifyErr.message });
     }
 
-    // OPTIONAL: Enforce domain allowlist (e.g., allow only @yourorg.com)
-    if (allowedDomains.length > 0) {
+    // Enforce email allowlist if configured (takes precedence over domain list)
+    if (allowedEmails.length > 0) {
+      const emailLower = (email || '').toLowerCase();
+      if (!allowedEmails.includes(emailLower)) {
+        console.error('Email not in allowlist:', emailLower);
+        return res.status(403).json({ message: 'User not authorized. Please contact admin.' });
+      }
+    } else if (allowedDomains.length > 0) {
+      // OPTIONAL: Enforce domain allowlist (e.g., allow only @yourorg.com)
       const emailDomain = (email || '').split('@')[1]?.toLowerCase();
       if (!emailDomain || !allowedDomains.includes(emailDomain)) {
         console.error('Email domain not allowed:', emailDomain);
-        return res.status(403).json({ message: 'Email domain not allowed' });
+        return res.status(403).json({ message: 'User not authorized. Please contact admin.' });
       }
     }
 
     // Check if user exists and is active (no auto-provisioning)
     let user = await User.findOne({ email });
     if (!user) {
-      console.error('User not found in database:', email);
-      return res.status(403).json({ message: 'User not authorized. Please contact admin.' });
+      if (!autoProvision) {
+        console.error('User not found in database:', email);
+        return res.status(403).json({ message: 'User not authorized. Please contact admin.' });
+      }
+      // Auto-provision guarded by allowlist/domain checks above
+      user = await User.create({
+        organizationId: 'SA-GOV-001',
+        name: email.split('@')[0],
+        email,
+        password: await require('bcryptjs').hash(require('crypto').randomBytes(16).toString('hex'), 10),
+        role: 'Viewer',
+        department: '',
+        status: 'active',
+      });
     }
 
     if (user.status !== 'active') {

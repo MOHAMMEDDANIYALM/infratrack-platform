@@ -1,0 +1,34 @@
+const mongoose = require('mongoose');
+
+const connectDB = async () => {
+  const mongoUri = process.env.MONGODB_URI;
+  
+  if (!mongoUri) {
+    throw new Error('MONGODB_URI not set');
+  }
+
+  try {
+    await mongoose.connect(mongoUri, {
+      ssl: true,
+      tls: true,
+      tlsAllowInvalidCertificates: true,
+      serverSelectionTimeoutMS: 30000,
+      socketTimeoutMS: 45000,
+      maxPoolSize: 10,
+      minPoolSize: 2,
+      retryWrites: false,
+      directConnection: false,
+    });
+
+    // Disable buffering - fail fast instead of buffering queries
+    mongoose.set('bufferCommands', false);
+    mongoose.set('bufferTimeoutMS', 20000);
+
+    console.log('✅ Cosmos DB Connected');
+  } catch (error) {
+    console.error('❌ Database connection failed:', error.message);
+    throw error;
+  }
+};
+
+module.exports = connectDB;

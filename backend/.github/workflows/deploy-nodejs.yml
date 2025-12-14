@@ -1,0 +1,92 @@
+name: Deploy Full Stack to Azure Web App
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Create Frontend .env (with defaults)
+        working-directory: frontend
+        run: |
+          cat > .env << 'EOF'
+          VITE_API_URL=https://infratrack-backend-akbqapebgkaqc5ce.centralindia-01.azurewebsites.net/api
+          VITE_MICROSOFT_CLIENT_ID=3f2cb0db-c506-43d7-a008-2c7e5a77e230
+          VITE_MICROSOFT_TENANT_ID=ed150c39-0cbd-4494-b999-ccf530e55e1f
+          VITE_REDIRECT_URI=https://infratrack-backend-akbqapebgkaqc5ce.centralindia-01.azurewebsites.net/auth/callback
+          EOF
+
+      - name: Build Frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+          
+      - name: Install Backend Dependencies
+        working-directory: backend
+        run: |
+          npm install --production
+          
+      - name: Create Deployment Package
+        run: |
+          # Create deployment directory
+          mkdir -p deploy-package
+          
+          # Copy backend files
+          cp -r backend/src deploy-package/
+          cp backend/server.js deploy-package/
+          cp backend/package.json deploy-package/
+          cp backend/package-lock.json deploy-package/
+          cp -r backend/node_modules deploy-package/
+          
+          # Copy frontend build to public folder
+          mkdir -p deploy-package/public
+          cp -r frontend/dist/* deploy-package/public/
+          
+      - name: Create web.config for Azure
+        run: |
+          cat > deploy-package/web.config << 'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <configuration>
+            <system.webServer>
+              <handlers>
+                <add name="iisnode" path="server.js" verb="*" modules="iisnode"/>
+              </handlers>
+              <rewrite>
+                <rules>
+                  <rule name="NodeInspector" patternSyntax="ECMAScript" stopProcessing="true">
+                    <match url="^server.js\/debug[\/]?" />
+                  </rule>
+                  <rule name="DynamicContent">
+                    <conditions>
+                      <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="True"/>
+                    </conditions>
+                    <action type="Rewrite" url="server.js"/>
+                  </rule>
+                </rules>
+              </rewrite>
+              <httpErrors existingResponse="PassThrough" />
+              <iisnode node_env="production" loggingEnabled="true" />
+            </system.webServer>
+          </configuration>
+          EOF
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: infratrack-backend
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: deploy-package

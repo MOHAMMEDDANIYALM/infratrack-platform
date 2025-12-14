@@ -1,0 +1,50 @@
+name: Build and Deploy InfraTrack
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    env:
+      WORKING_DIR: infratrack-platform
+      FRONTEND_DIR: frontend
+      BACKEND_DIR: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install frontend deps and build
+        working-directory: ${{ env.WORKING_DIR }}/${{ env.FRONTEND_DIR }}
+        run: |
+          npm ci
+          npm run build
+
+      - name: Prepare backend public assets
+        run: |
+          mkdir -p ${{ env.WORKING_DIR }}/${{ env.BACKEND_DIR }}/public
+          rsync -a ${{ env.WORKING_DIR }}/${{ env.FRONTEND_DIR }}/dist/ ${{ env.WORKING_DIR }}/${{ env.BACKEND_DIR }}/public/
+
+      - name: Install backend deps
+        working-directory: ${{ env.WORKING_DIR }}/${{ env.BACKEND_DIR }}
+        run: |
+          npm ci
+
+      - name: Archive backend for deploy
+        run: |
+          cd ${{ env.WORKING_DIR }}/${{ env.BACKEND_DIR }}
+          zip -r ../backend.zip . -x "**/node_modules/**/.cache/**"
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: infratrack-platform/backend.zip

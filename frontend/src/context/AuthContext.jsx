@@ -2,14 +2,15 @@ import { createContext, useEffect, useRef, useState } from 'react';
 import { PublicClientApplication } from '@azure/msal-browser';
 import { authAPI } from '../services/api';
 
-// MSAL configuration for SPA with tenant-specific authority
+// MSAL configuration for SPA with configurable authority
 const msalConfig = {
   auth: {
     clientId: import.meta.env.VITE_MICROSOFT_CLIENT_ID || '3f2cb0db-c506-43d7-a008-2c7e5a77e230',
-    // Tenant-specific authority (NOT /common) for single-tenant SPA
-    authority: import.meta.env.VITE_MICROSOFT_TENANT_ID
-      ? `https://login.microsoftonline.com/${import.meta.env.VITE_MICROSOFT_TENANT_ID}`
-      : undefined,
+    // Allow overriding authority for personal accounts (consumers/common)
+    authority: import.meta.env.VITE_MICROSOFT_AUTHORITY
+      || (import.meta.env.VITE_MICROSOFT_TENANT_ID
+        ? `https://login.microsoftonline.com/${import.meta.env.VITE_MICROSOFT_TENANT_ID}`
+        : undefined),
     redirectUri: import.meta.env.VITE_REDIRECT_URI || window.location.origin,
   },
   cache: {
