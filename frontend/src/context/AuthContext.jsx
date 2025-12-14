@@ -44,6 +44,11 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const setAuthState = (newToken, newUser) => {
+    setToken(newToken);
+    setUser(newUser);
+  };
+
   const refreshAccessToken = async () => {
     try {
       const refreshToken = localStorage.getItem('refreshToken');
@@ -69,6 +74,7 @@ export const AuthProvider = ({ children }) => {
         user, 
         token,
         logout,
+        setAuthState,
         refreshAccessToken,
         loading,
         error,

@@ -12,7 +12,7 @@ import { authAPI } from '../services/api';
 
 const Login = () => {
   const navigate = useNavigate();
-  const { token, loading: authLoading } = useContext(AuthContext);
+  const { token, loading: authLoading, setAuthState } = useContext(AuthContext);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -41,6 +41,11 @@ const Login = () => {
       localStorage.setItem('token', response.token);
       localStorage.setItem('refreshToken', response.refreshToken);
       localStorage.setItem('user', JSON.stringify(response.user));
+
+      // Update context immediately (don't wait for re-render)
+      if (setAuthState) {
+        setAuthState(response.token, response.user);
+      }
 
       navigate('/dashboard');
     } catch (err) {
