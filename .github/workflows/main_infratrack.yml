@@ -40,7 +40,8 @@ jobs:
       - name: Install backend dependencies
         run: |
           cd backend
-          npm install --omit=dev
+          npm ci --omit=dev --prefer-offline
+          echo "✅ Backend dependencies installed"
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
