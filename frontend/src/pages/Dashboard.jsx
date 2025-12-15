@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { io } from 'socket.io-client';
+import socketService from '../services/socket';
 import {
   CpuChipIcon,
   CircleStackIcon,
@@ -45,27 +45,20 @@ const Dashboard = () => {
 
   useEffect(() => {
     // Connect to WebSocket server
-    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
-    const socket = io(backendUrl, {
-      transports: ['websocket', 'polling'],
-      reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionAttempts: 5
-    });
+    const socket = socketService.connect();
 
-    socket.on('connect', () => {
-      console.log('Connected to real-time metrics server');
+    const handleConnect = () => {
+      console.log('✅ Connected to real-time metrics server');
       setConnected(true);
-    });
+    };
 
-    socket.on('disconnect', () => {
-      console.log('Disconnected from real-time metrics server');
+    const handleDisconnect = () => {
+      console.log('❌ Disconnected from real-time metrics server');
       setConnected(false);
-    });
+    };
 
-    // Listen for dashboard updates
-    socket.on('dashboard:update', (data) => {
-      console.log('Received dashboard update:', data);
+    const handleDashboardUpdate = (data) => {
+      console.log('📊 Received dashboard update:', data);
       
       // Update metrics
       if (data.metrics) {
@@ -75,10 +68,10 @@ const Dashboard = () => {
       // Update stats
       if (data.stats) {
         const updatedStats = [
-          { name: 'Active Servers', value: data.stats.activeServers.value, change: data.stats.activeServers.change, icon: ServerIcon, color: 'cyan' },
-          { name: 'Containers', value: data.stats.containers.value, change: data.stats.containers.change, icon: CircleStackIcon, color: 'blue' },
-          { name: 'Uptime', value: data.stats.uptime.value, change: data.stats.uptime.change, icon: CheckCircleIcon, color: 'green' },
-          { name: 'Error Rate', value: data.stats.errorRate.value, change: data.stats.errorRate.change, icon: ExclamationTriangleIcon, color: 'red' },
+          { name: 'Active Servers', value: data.stats.activeServers?.value || '0', change: data.stats.activeServers?.change || '+0', icon: ServerIcon, color: 'cyan' },
+          { name: 'Containers', value: data.stats.containers?.value || '0', change: data.stats.containers?.change || '+0', icon: CircleStackIcon, color: 'blue' },
+          { name: 'Uptime', value: data.stats.uptime?.value || '0%', change: data.stats.uptime?.change || '+0', icon: CheckCircleIcon, color: 'green' },
+          { name: 'Error Rate', value: data.stats.errorRate?.value || '0%', change: data.stats.errorRate?.change || '+0', icon: ExclamationTriangleIcon, color: 'red' },
         ];
         setStats(updatedStats);
       }
@@ -95,15 +88,27 @@ const Dashboard = () => {
 
       // Update timestamp
       setLastUpdate('Just now');
-    });
+    };
 
-    socket.on('error', (error) => {
-      console.error('WebSocket error:', error);
-    });
+    const handleError = (error) => {
+      console.error('❌ WebSocket error:', error);
+    };
+
+    socketService.on('connect', handleConnect);
+    socketService.on('disconnect', handleDisconnect);
+    socketService.on('dashboard:update', handleDashboardUpdate);
+    socketService.on('error', handleError);
+
+    // Set initial connection status
+    setConnected(socketService.connected);
 
     // Cleanup on unmount
     return () => {
-      socket.disconnect();
+      socketService.off('connect', handleConnect);
+      socketService.off('disconnect', handleDisconnect);
+      socketService.off('dashboard:update', handleDashboardUpdate);
+      socketService.off('error', handleError);
+      socketService.disconnect();
     };
   }, []);
 
