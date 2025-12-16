@@ -163,4 +163,13 @@ export const dashboardAPI = {
   },
 };
 
+// Azure-backed resources (servers, metrics, alerts, stats)
+export const azureAPI = {
+  getServers: () => api.get('/azure/servers'),
+  getStats: () => api.get('/azure/stats'),
+  getMetrics: () => api.get('/azure/metrics'),
+  getAlerts: () => api.get('/azure/alerts'),
+  getNetwork: () => api.get('/azure/network'),
+};
+
 export default api;
