@@ -14,6 +14,7 @@ class AzureService {
     this.subscriptionId = process.env.AZURE_SUBSCRIPTION_ID;
     this.resourceGroupName = process.env.AZURE_RESOURCE_GROUP;
     this.logAnalyticsWorkspaceId = process.env.LOG_ANALYTICS_WORKSPACE_ID;
+    this.disableDemo = String(process.env.AZURE_DISABLE_DEMO || '').toLowerCase() === 'true';
     const envClientId = process.env.AZURE_CLIENT_ID;
     const envClientSecret = process.env.AZURE_CLIENT_SECRET;
     const envTenantId = process.env.AZURE_TENANT_ID;
@@ -491,6 +492,7 @@ class AzureService {
   // Fallback data when Azure is not configured or fails
   
   getFallbackServers() {
+    if (this.disableDemo) return [];
     return [
       { name: 'EU-WEST-2-APP-01', status: 'healthy', cpu: 67, ram: 54, uptime: '45d 12h', type: 'Standard_D2s_v3' },
       { name: 'US-EAST-1-DB-03', status: 'warning', cpu: 89, ram: 78, uptime: '120d 5h', type: 'Standard_D4s_v3' },
@@ -500,6 +502,9 @@ class AzureService {
   }
 
   getFallbackMetrics() {
+    if (this.disableDemo) {
+      return { cpu: 0, ram: 0, disk: 0, network: 0 };
+    }
     return {
       cpu: Math.floor(Math.random() * 30) + 50,
       ram: Math.floor(Math.random() * 40) + 40,
@@ -509,6 +514,7 @@ class AzureService {
   }
 
   getFallbackAlerts() {
+    if (this.disableDemo) return [];
     return [
       { id: 1, type: 'critical', server: 'EU-WEST-2-APP-01', message: 'CPU usage exceeded 95%', time: '2 min ago' },
       { id: 2, type: 'warning', server: 'US-EAST-1-DB-03', message: 'High memory consumption', time: '15 min ago' },
@@ -517,6 +523,14 @@ class AzureService {
   }
 
   getFallbackStats() {
+    if (this.disableDemo) {
+      return {
+        activeServers: { value: '0', change: '+0' },
+        containers: { value: '0', change: '+0' },
+        uptime: { value: '0%', change: '+0' },
+        errorRate: { value: '0%', change: '+0' }
+      };
+    }
     return {
       activeServers: { value: '248', change: '+12' },
       containers: { value: '1,429', change: '+54' },
