@@ -1,67 +1,58 @@
+import { useEffect, useMemo, useState } from 'react';
 import { RocketLaunchIcon, CheckCircleIcon, XCircleIcon, ClockIcon } from '@heroicons/react/24/outline';
+import { dashboardAPI } from '../services/api';
 
 const CICD = () => {
-  const deployments = [
-    {
-      id: 1,
-      repo: 'infratrack-frontend',
-      branch: 'main',
-      commit: 'feat: Add new dashboard widgets',
-      commitHash: 'a3f5d2b',
-      author: 'Mohammed Daniyal',
-      status: 'success',
-      environment: 'production',
-      timestamp: '2025-12-08 14:30:00',
-      duration: '4m 32s',
-      pipeline: 'Build → Test → Deploy',
-    },
-    {
-      id: 2,
-      repo: 'infratrack-backend',
-      branch: 'develop',
-      commit: 'fix: Database connection pool optimization',
-      commitHash: '8b2c9e4',
-      author: 'Ahmed Ali',
-      status: 'running',
-      environment: 'staging',
-      timestamp: '2025-12-08 14:28:15',
-      duration: '2m 18s',
-      pipeline: 'Build → Test',
-    },
-    {
-      id: 3,
-      repo: 'infratrack-api',
-      branch: 'feature/auth',
-      commit: 'feat: Implement OAuth2 authentication',
-      commitHash: 'c7d1a8f',
-      author: 'Fatima Khan',
-      status: 'failed',
-      environment: 'staging',
-      timestamp: '2025-12-08 13:45:22',
-      duration: '1m 45s',
-      pipeline: 'Build',
-    },
-    {
-      id: 4,
-      repo: 'infratrack-frontend',
-      branch: 'main',
-      commit: 'docs: Update API documentation',
-      commitHash: 'f2b8c3d',
-      author: 'Sarah Ahmed',
-      status: 'success',
-      environment: 'production',
-      timestamp: '2025-12-08 12:15:00',
-      duration: '3m 54s',
-      pipeline: 'Build → Test → Deploy',
-    },
-  ];
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [deployments, setDeployments] = useState([]);
 
-  const pipelines = [
-    { name: 'infratrack-frontend', status: 'healthy', lastRun: '10 min ago', successRate: '98%' },
-    { name: 'infratrack-backend', status: 'healthy', lastRun: '15 min ago', successRate: '95%' },
-    { name: 'infratrack-api', status: 'failing', lastRun: '30 min ago', successRate: '76%' },
-    { name: 'infratrack-mobile', status: 'healthy', lastRun: '1 hour ago', successRate: '92%' },
-  ];
+  useEffect(() => {
+    const fetchDeployments = async () => {
+      try {
+        setLoading(true);
+        const data = await dashboardAPI.getDeployments({ limit: 50 });
+        setDeployments(Array.isArray(data?.deployments) ? data.deployments : []);
+        setError('');
+      } catch (e) {
+        setError(e.message || 'Failed to fetch deployments');
+        setDeployments([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDeployments();
+  }, []);
+
+  const pipelines = useMemo(() => {
+    const byName = new Map();
+    deployments.forEach(d => {
+      const key = d.name || d.pipelineId || 'unknown';
+      const item = byName.get(key) || { name: key, total: 0, success: 0, lastRun: d.startedAt, status: 'healthy' };
+      item.total += 1;
+      if (d.status === 'success') item.success += 1;
+      if (!item.lastRun || new Date(d.startedAt) > new Date(item.lastRun)) item.lastRun = d.startedAt;
+      if (d.status === 'failed') item.status = 'failing';
+      byName.set(key, item);
+    });
+    return Array.from(byName.values()).map(x => ({
+      name: x.name,
+      status: x.status,
+      lastRun: x.lastRun ? timeAgo(x.lastRun) : '—',
+      successRate: x.total ? Math.round((x.success / x.total) * 100) + '%' : '0%'
+    }));
+  }, [deployments]);
+
+  const timeAgo = (dateStr) => {
+    if (!dateStr) return '—';
+    const diffMs = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 60) return `${mins} min ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs} hour${hrs > 1 ? 's' : ''} ago`;
+    const days = Math.floor(hrs / 24);
+    return `${days} day${days > 1 ? 's' : ''} ago`;
+  };
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -105,21 +96,15 @@ const CICD = () => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-gray-900/50 border border-green-500/20 rounded-xl p-4">
           <p className="text-gray-400 text-sm">Successful Deployments</p>
-          <p className="text-3xl font-bold text-green-400 mt-1">
-            {deployments.filter((d) => d.status === 'success').length}
-          </p>
+          <p className="text-3xl font-bold text-green-400 mt-1">{deployments.filter((d) => d.status === 'success').length}</p>
         </div>
         <div className="bg-gray-900/50 border border-blue-500/20 rounded-xl p-4">
           <p className="text-gray-400 text-sm">In Progress</p>
-          <p className="text-3xl font-bold text-blue-400 mt-1">
-            {deployments.filter((d) => d.status === 'running').length}
-          </p>
+          <p className="text-3xl font-bold text-blue-400 mt-1">{deployments.filter((d) => d.status === 'running').length}</p>
         </div>
         <div className="bg-gray-900/50 border border-red-500/20 rounded-xl p-4">
           <p className="text-gray-400 text-sm">Failed</p>
-          <p className="text-3xl font-bold text-red-400 mt-1">
-            {deployments.filter((d) => d.status === 'failed').length}
-          </p>
+          <p className="text-3xl font-bold text-red-400 mt-1">{deployments.filter((d) => d.status === 'failed').length}</p>
         </div>
         <div className="bg-gray-900/50 border border-cyan-500/20 rounded-xl p-4">
           <p className="text-gray-400 text-sm">Total Pipelines</p>
@@ -131,7 +116,11 @@ const CICD = () => {
       <div className="bg-gray-900/50 border border-cyan-500/20 rounded-xl p-6">
         <h3 className="text-xl font-bold text-white mb-4">Pipeline Health</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {pipelines.map((pipeline) => (
+          {loading ? (
+            <div className="text-gray-400">Loading pipeline health...</div>
+          ) : pipelines.length === 0 ? (
+            <div className="text-gray-400">No pipeline data available.</div>
+          ) : pipelines.map((pipeline) => (
             <div
               key={pipeline.name}
               className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 hover:border-cyan-500/30 transition-all"
@@ -160,7 +149,11 @@ const CICD = () => {
           </div>
         </div>
         <div className="divide-y divide-gray-800">
-          {deployments.map((deployment) => {
+          {loading ? (
+            <div className="p-6 text-gray-400">Loading deployments...</div>
+          ) : deployments.length === 0 ? (
+            <div className="p-6 text-gray-400">No deployments found.</div>
+          ) : deployments.map((deployment) => {
             const StatusIcon = getStatusIcon(deployment.status);
             return (
               <div key={deployment.id} className="p-6 hover:bg-gray-800/30 transition-colors">
@@ -171,29 +164,29 @@ const CICD = () => {
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center space-x-3 mb-2">
-                        <h4 className="text-white font-semibold">{deployment.repo}</h4>
-                        <span className="px-2 py-1 bg-gray-700 text-gray-300 rounded text-xs font-mono">
-                          {deployment.branch}
-                        </span>
+                        <h4 className="text-white font-semibold">{deployment.name}</h4>
+                        {deployment.version && (
+                          <span className="px-2 py-1 bg-gray-700 text-gray-300 rounded text-xs font-mono">
+                            {deployment.version}
+                          </span>
+                        )}
                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(deployment.status)}`}>
                           {deployment.status}
                         </span>
                       </div>
-                      <p className="text-gray-400 text-sm mb-2">{deployment.commit}</p>
+                      {deployment.commitHash && (
+                        <p className="text-gray-400 text-sm mb-2">Commit: {deployment.commitHash}</p>
+                      )}
                       <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500">
-                        <span>#{deployment.commitHash}</span>
+                        {deployment.environment && <span>{deployment.environment}</span>}
                         <span>•</span>
-                        <span>{deployment.author}</span>
+                        <span>{deployment.duration ? Math.round(deployment.duration / 60) + 'm' : '—'}</span>
                         <span>•</span>
-                        <span>{deployment.environment}</span>
-                        <span>•</span>
-                        <span>{deployment.duration}</span>
-                        <span>•</span>
-                        <span>{deployment.pipeline}</span>
+                        <span>{deployment.startedAt ? new Date(deployment.startedAt).toLocaleString() : '—'}</span>
                       </div>
                     </div>
                   </div>
-                  <span className="text-gray-400 text-sm whitespace-nowrap ml-4">{deployment.timestamp}</span>
+                  <span className="text-gray-400 text-sm whitespace-nowrap ml-4">{deployment.completedAt ? new Date(deployment.completedAt).toLocaleString() : ''}</span>
                 </div>
                 <div className="flex items-center gap-3 pl-16">
                   <button className="px-4 py-2 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 rounded-lg transition-all text-sm font-medium">
