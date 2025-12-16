@@ -17,6 +17,7 @@ class AzureService {
     const envClientId = process.env.AZURE_CLIENT_ID;
     const envClientSecret = process.env.AZURE_CLIENT_SECRET;
     const envTenantId = process.env.AZURE_TENANT_ID;
+    this.credentialType = 'none';
     
     // Debug logging
     console.log('🔍 Azure Configuration Check:');
@@ -38,6 +39,7 @@ class AzureService {
           this.credential = new DefaultAzureCredential();
           credentialType = 'DefaultAzureCredential (chained)';
         }
+        this.credentialType = credentialType;
         this.monitorQueryClient = new MonitorQueryClient(this.credential);
         this.resourcesClient = new ResourceManagementClient(this.credential, this.subscriptionId);
         this.computeClient = new ComputeManagementClient(this.credential, this.subscriptionId);
@@ -49,6 +51,7 @@ class AzureService {
         console.error('❌ Azure credential initialization failed:', error.message);
         console.warn('⚠️  Using demo data instead');
         this.credential = null;
+        this.credentialType = 'init-failed';
       }
     } else {
       console.warn('⚠️  Azure configuration incomplete - using demo data');
@@ -57,6 +60,7 @@ class AzureService {
         !this.resourceGroupName && 'AZURE_RESOURCE_GROUP'
       ].filter(Boolean).join(', '));
       this.credential = null;
+      this.credentialType = 'config-missing';
     }
   }
 

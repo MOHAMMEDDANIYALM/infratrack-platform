@@ -20,6 +20,24 @@ router.get('/metrics', async (req, res) => {
   }
 });
 
+// Debug Azure initialization/status
+router.get('/debug/status', (req, res) => {
+  try {
+    const status = {
+      subscriptionIdSet: !!process.env.AZURE_SUBSCRIPTION_ID,
+      resourceGroupSet: !!process.env.AZURE_RESOURCE_GROUP,
+      clientIdSet: !!process.env.AZURE_CLIENT_ID,
+      clientSecretSet: !!process.env.AZURE_CLIENT_SECRET,
+      tenantIdSet: !!process.env.AZURE_TENANT_ID,
+      credentialInitialized: !!azureService.credential,
+      credentialType: azureService.credentialType || 'unknown',
+    };
+    res.json(status);
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch Azure status', error: err.message });
+  }
+});
+
 // Get dashboard stats (Active Servers, Containers, Uptime, Error Rate)
 router.get('/stats', async (req, res) => {
   try {
