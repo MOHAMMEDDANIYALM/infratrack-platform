@@ -7,6 +7,21 @@ const CICD = () => {
   const [error, setError] = useState('');
   const [deployments, setDeployments] = useState([]);
 
+  const timeAgo = (dateStr) => {
+    if (!dateStr) return '—';
+    try {
+      const diffMs = Date.now() - new Date(dateStr).getTime();
+      const mins = Math.floor(diffMs / 60000);
+      if (mins < 60) return `${mins} min ago`;
+      const hrs = Math.floor(mins / 60);
+      if (hrs < 24) return `${hrs} hour${hrs > 1 ? 's' : ''} ago`;
+      const days = Math.floor(hrs / 24);
+      return `${days} day${days > 1 ? 's' : ''} ago`;
+    } catch (e) {
+      return '—';
+    }
+  };
+
   useEffect(() => {
     const fetchDeployments = async () => {
       try {
@@ -15,6 +30,7 @@ const CICD = () => {
         setDeployments(Array.isArray(data?.deployments) ? data.deployments : []);
         setError('');
       } catch (e) {
+        console.error('Failed to fetch deployments:', e);
         setError(e.message || 'Failed to fetch deployments');
         setDeployments([]);
       } finally {
@@ -25,34 +41,28 @@ const CICD = () => {
   }, []);
 
   const pipelines = useMemo(() => {
-    const byName = new Map();
-    deployments.forEach(d => {
-      const key = d.name || d.pipelineId || 'unknown';
-      const item = byName.get(key) || { name: key, total: 0, success: 0, lastRun: d.startedAt, status: 'healthy' };
-      item.total += 1;
-      if (d.status === 'success') item.success += 1;
-      if (!item.lastRun || new Date(d.startedAt) > new Date(item.lastRun)) item.lastRun = d.startedAt;
-      if (d.status === 'failed') item.status = 'failing';
-      byName.set(key, item);
-    });
-    return Array.from(byName.values()).map(x => ({
-      name: x.name,
-      status: x.status,
-      lastRun: x.lastRun ? timeAgo(x.lastRun) : '—',
-      successRate: x.total ? Math.round((x.success / x.total) * 100) + '%' : '0%'
-    }));
-  }, [deployments]);
-
-  const timeAgo = (dateStr) => {
-    if (!dateStr) return '—';
-    const diffMs = Date.now() - new Date(dateStr).getTime();
-    const mins = Math.floor(diffMs / 60000);
-    if (mins < 60) return `${mins} min ago`;
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return `${hrs} hour${hrs > 1 ? 's' : ''} ago`;
-    const days = Math.floor(hrs / 24);
-    return `${days} day${days > 1 ? 's' : ''} ago`;
-  };
+    try {
+      const byName = new Map();
+      deployments.forEach(d => {
+        const key = d.name || d.pipelineId || 'unknown';
+        const item = byName.get(key) || { name: key, total: 0, success: 0, lastRun: d.startedAt, status: 'healthy' };
+        item.total += 1;
+        if (d.status === 'success') item.success += 1;
+        if (!item.lastRun || new Date(d.startedAt) > new Date(item.lastRun)) item.lastRun = d.startedAt;
+        if (d.status === 'failed') item.status = 'failing';
+        byName.set(key, item);
+      });
+      return Array.from(byName.values()).map(x => ({
+        name: x.name,
+        status: x.status,
+        lastRun: x.lastRun ? timeAgo(x.lastRun) : '—',
+        successRate: x.total ? Math.round((x.success / x.total) * 100) + '%' : '0%'
+      }));
+    } catch (e) {
+      console.error('Error computing pipelines:', e);
+      return [];
+    }
+  }, [deployments, timeAgo]);
 
   const getStatusColor = (status) => {
     switch (status) {
