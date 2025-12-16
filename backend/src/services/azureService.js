@@ -15,22 +15,36 @@ class AzureService {
     this.resourceGroupName = process.env.AZURE_RESOURCE_GROUP;
     this.logAnalyticsWorkspaceId = process.env.LOG_ANALYTICS_WORKSPACE_ID;
     
+    // Debug logging
+    console.log('🔍 Azure Configuration Check:');
+    console.log('   AZURE_SUBSCRIPTION_ID:', this.subscriptionId ? '✓ Set' : '✗ Missing');
+    console.log('   AZURE_RESOURCE_GROUP:', this.resourceGroupName ? '✓ Set' : '✗ Missing');
+    console.log('   AZURE_CLIENT_ID:', process.env.AZURE_CLIENT_ID ? '✓ Set' : '✗ Missing');
+    console.log('   AZURE_CLIENT_SECRET:', process.env.AZURE_CLIENT_SECRET ? '✓ Set' : '✗ Missing');
+    console.log('   AZURE_TENANT_ID:', process.env.AZURE_TENANT_ID ? '✓ Set' : '✗ Missing');
+    
     // Only initialize Azure clients if credentials are available
     if (this.subscriptionId && this.resourceGroupName) {
       try {
+        console.log('🔄 Attempting to initialize Azure clients...');
         this.credential = new DefaultAzureCredential();
         this.monitorQueryClient = new MonitorQueryClient(this.credential);
         this.resourcesClient = new ResourceManagementClient(this.credential, this.subscriptionId);
         this.computeClient = new ComputeManagementClient(this.credential, this.subscriptionId);
         this.containerClient = new ContainerInstanceManagementClient(this.credential, this.subscriptionId);
         this.monitorClient = new MonitorClient(this.credential, this.subscriptionId);
-        console.log('✅ Azure clients initialized');
+        console.log('✅ Azure clients initialized successfully - using REAL Azure data');
       } catch (error) {
-        console.warn('⚠️  Azure credentials not available - using demo data:', error.message);
+        console.error('❌ Azure credential initialization failed:', error.message);
+        console.warn('⚠️  Using demo data instead');
         this.credential = null;
       }
     } else {
-      console.warn('⚠️  Azure configuration not set - using demo data');
+      console.warn('⚠️  Azure configuration incomplete - using demo data');
+      console.warn('   Missing: ' + [
+        !this.subscriptionId && 'AZURE_SUBSCRIPTION_ID',
+        !this.resourceGroupName && 'AZURE_RESOURCE_GROUP'
+      ].filter(Boolean).join(', '));
       this.credential = null;
     }
   }
