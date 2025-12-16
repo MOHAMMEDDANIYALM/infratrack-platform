@@ -100,6 +100,10 @@ class RealTimeMetricsController {
    */
   async broadcastMetrics() {
     try {
+      // Log Azure SDK initialization status every cycle for debugging
+      const azureInitialized = !!(azureService && azureService.credential);
+      console.log(`Azure initialized: ${azureInitialized ? 'yes' : 'no'}`);
+
       // Fetch all data in parallel for efficiency
       const [metrics, stats, servers, alerts] = await Promise.all([
         azureService.getAggregatedMetrics(),
@@ -114,6 +118,7 @@ class RealTimeMetricsController {
         stats,
         servers,
         alerts,
+        azureInitialized,
         timestamp: new Date().toISOString()
       });
 
