@@ -31,10 +31,38 @@ router.get('/debug/status', (req, res) => {
       tenantIdSet: !!process.env.AZURE_TENANT_ID,
       credentialInitialized: !!azureService.credential,
       credentialType: azureService.credentialType || 'unknown',
+      initError: azureService.initError || null,
     };
     res.json(status);
   } catch (err) {
     res.status(500).json({ message: 'Failed to fetch Azure status', error: err.message });
+  }
+});
+
+// Test acquiring an Azure AD token with Service Principal (does not return the token)
+router.get('/debug/token', async (req, res) => {
+  try {
+    const { ClientSecretCredential } = require('@azure/identity');
+    const tenantId = process.env.AZURE_TENANT_ID;
+    const clientId = process.env.AZURE_CLIENT_ID;
+    const clientSecret = process.env.AZURE_CLIENT_SECRET;
+
+    if (!tenantId || !clientId || !clientSecret) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing AZURE_TENANT_ID / AZURE_CLIENT_ID / AZURE_CLIENT_SECRET'
+      });
+    }
+
+    const cred = new ClientSecretCredential(tenantId, clientId, clientSecret);
+    const token = await cred.getToken('https://management.azure.com/.default');
+    res.json({
+      success: true,
+      tokenAcquired: !!token,
+      expiresOn: token?.expiresOnTimestamp || null
+    });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message, name: e.name, code: e.code || null });
   }
 });
 
