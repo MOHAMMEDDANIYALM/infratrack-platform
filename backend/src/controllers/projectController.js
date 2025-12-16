@@ -233,6 +233,69 @@ exports.getDeployments = async (req, res) => {
     const { organizationId } = req.user;
     const { status, environment, limit = 50, skip = 0 } = req.query;
 
+    // Prefer live GitHub Actions data when configured
+    const ghToken = process.env.GITHUB_TOKEN;
+    const ghRepo = process.env.GITHUB_REPO; // format: owner/repo
+
+    if (ghToken && ghRepo) {
+      const url = new URL(`https://api.github.com/repos/${ghRepo}/actions/runs`);
+      url.searchParams.set('per_page', Math.min(parseInt(limit) || 50, 100));
+
+      const resp = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${ghToken}`,
+          Accept: 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28',
+          'User-Agent': 'infratrack-app'
+        }
+      });
+
+      if (!resp.ok) {
+        const text = await resp.text();
+        return res.status(resp.status).json({
+          message: 'Failed to fetch GitHub workflows',
+          error: text
+        });
+      }
+
+      const data = await resp.json();
+      const runs = Array.isArray(data.workflow_runs) ? data.workflow_runs : [];
+
+      const mapStatus = (run) => {
+        if (run.status === 'in_progress' || run.status === 'queued') return 'running';
+        if (run.conclusion === 'success') return 'success';
+        if (run.conclusion === 'skipped' || run.conclusion === 'cancelled') return 'success';
+        if (run.conclusion === 'failure' || run.conclusion === 'timed_out') return 'failed';
+        return 'running';
+      };
+
+      const deployments = runs.slice(parseInt(skip) || 0).map((run) => {
+        const started = run.run_started_at || run.created_at;
+        const completed = run.updated_at;
+        const durationSeconds = started && completed ? Math.max(0, (new Date(completed) - new Date(started)) / 1000) : 0;
+
+        return {
+          id: run.id,
+          name: run.name || run.display_title || run.head_branch || 'workflow',
+          status: mapStatus(run),
+          version: run.head_branch,
+          commitHash: run.head_sha,
+          environment: run.event,
+          duration: durationSeconds,
+          startedAt: started,
+          completedAt: completed,
+          htmlUrl: run.html_url
+        };
+      });
+
+      return res.json({
+        deployments,
+        total: deployments.length,
+        hasMore: false
+      });
+    }
+
+    // Fallback to database deployments
     const query = { organizationId };
 
     if (status) query.status = status;
