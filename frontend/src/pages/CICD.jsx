@@ -62,7 +62,7 @@ const CICD = () => {
       console.error('Error computing pipelines:', e);
       return [];
     }
-  }, [deployments, timeAgo]);
+  }, [deployments]);
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -101,6 +101,13 @@ const CICD = () => {
         <h1 className="text-3xl font-bold text-white mb-2">CI/CD Pipeline Monitor</h1>
         <p className="text-gray-400">Track deployments, builds, and pipeline status</p>
       </div>
+
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 text-red-400">
+          {error}
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
