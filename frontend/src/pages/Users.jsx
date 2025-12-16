@@ -1,63 +1,32 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { UsersIcon, PlusIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
+import { dashboardAPI } from '../services/api';
 
 const Users = () => {
   const [showAddUser, setShowAddUser] = useState(false);
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const users = [
-    {
-      id: 1,
-      name: 'Mohammed Daniyal',
-      email: 'admin@enterprise.sa',
-      role: 'Admin',
-      status: 'active',
-      lastLogin: '2025-12-08 14:30:00',
-      organization: 'SA-GOV-001',
-    },
-    {
-      id: 2,
-      name: 'Ahmed Ali',
-      email: 'ahmed.ali@enterprise.sa',
-      role: 'DevOps',
-      status: 'active',
-      lastLogin: '2025-12-08 13:45:00',
-      organization: 'SA-GOV-001',
-    },
-    {
-      id: 3,
-      name: 'Fatima Khan',
-      email: 'fatima.khan@enterprise.sa',
-      role: 'DevOps',
-      status: 'active',
-      lastLogin: '2025-12-08 11:20:00',
-      organization: 'SA-GOV-001',
-    },
-    {
-      id: 4,
-      name: 'Sarah Ahmed',
-      email: 'sarah.ahmed@enterprise.sa',
-      role: 'Viewer',
-      status: 'active',
-      lastLogin: '2025-12-08 09:15:00',
-      organization: 'SA-GOV-001',
-    },
-    {
-      id: 5,
-      name: 'Omar Hassan',
-      email: 'omar.hassan@enterprise.sa',
-      role: 'DevOps',
-      status: 'disabled',
-      lastLogin: '2025-12-05 16:30:00',
-      organization: 'SA-GOV-001',
-    },
-  ];
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        setLoading(true);
+        const data = await dashboardAPI.getUsers();
+        setUsers(Array.isArray(data?.users) ? data.users : []);
+        setError('');
+      } catch (e) {
+        console.error('Failed to fetch users:', e);
+        setError(e.message || 'Failed to fetch users');
+        setUsers([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUsers();
+  }, []);
 
-  const activities = [
-    { user: 'Mohammed Daniyal', action: 'Restarted server EU-WEST-2-APP-01', time: '10 min ago' },
-    { user: 'Ahmed Ali', action: 'Deployed to production', time: '25 min ago' },
-    { user: 'Fatima Khan', action: 'Created new alert rule', time: '1 hour ago' },
-    { user: 'Sarah Ahmed', action: 'Viewed cost reports', time: '2 hours ago' },
-  ];
+  const activities = [];
 
   const getRoleColor = (role) => {
     switch (role) {
@@ -94,6 +63,13 @@ const Users = () => {
           <span>Add User</span>
         </button>
       </div>
+
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 text-red-400">
+          {error}
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -180,12 +156,24 @@ const Users = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800">
-              {users.map((user) => (
+              {loading ? (
+                <tr>
+                  <td colSpan="5" className="px-6 py-4 text-center text-gray-400">
+                    Loading users...
+                  </td>
+                </tr>
+              ) : users.length === 0 ? (
+                <tr>
+                  <td colSpan="5" className="px-6 py-4 text-center text-gray-400">
+                    No users found.
+                  </td>
+                </tr>
+              ) : users.map((user) => (
                 <tr key={user.id} className="hover:bg-gray-800/30 transition-colors">
                   <td className="px-6 py-4">
                     <div>
-                      <p className="text-white font-medium">{user.name}</p>
-                      <p className="text-gray-400 text-sm">{user.email}</p>
+                      <p className="text-white font-medium">{user.name || 'Unknown'}</p>
+                      <p className="text-gray-400 text-sm">{user.email || 'No email'}</p>
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -198,7 +186,11 @@ const Users = () => {
                       {user.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-gray-300 text-sm">{user.lastLogin}</td>
+                  <td className="px-6 py-4">
+                    <span className="text-gray-300 text-sm">
+                      {user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'Never'}
+                    </span>
+                  </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
                       <button className="px-3 py-1 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 rounded text-xs">

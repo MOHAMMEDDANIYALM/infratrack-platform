@@ -12,6 +12,7 @@ const {
   updateAlert,
   getCosts,
   getDeployments,
+  getUsers,
 } = require('../controllers/projectController');
 
 // Dashboard
@@ -35,5 +36,8 @@ router.get('/costs', protect, getCosts);
 
 // Deployments
 router.get('/deployments', protect, getDeployments);
+
+// Users
+router.get('/users', protect, getUsers);
 
 module.exports = router;

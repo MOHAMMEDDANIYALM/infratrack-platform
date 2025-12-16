@@ -161,6 +161,8 @@ export const dashboardAPI = {
     if (filters.skip) params.append('skip', filters.skip);
     return api.get(`/deployments?${params.toString()}`);
   },
+
+  getUsers: () => api.get('/users'),
 };
 
 // Azure-backed resources (servers, metrics, alerts, stats)

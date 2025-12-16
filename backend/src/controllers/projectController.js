@@ -327,3 +327,24 @@ exports.getProjects = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+// Get all users in organization
+exports.getUsers = async (req, res) => {
+  try {
+    const { organizationId, role } = req.user;
+    
+    // Only Admin can view all users
+    if (role !== 'Admin') {
+      return res.status(403).json({ message: 'Access denied. Admin role required.' });
+    }
+
+    const User = require('../models/User');
+    const users = await User.find({ organizationId })
+      .select('-password')
+      .sort({ createdAt: -1 });
+
+    res.json({ users });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
