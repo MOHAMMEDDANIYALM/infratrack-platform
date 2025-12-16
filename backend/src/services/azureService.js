@@ -161,8 +161,11 @@ class AzureService {
    * Get container instances count (ACI + AKS)
    */
   async getContainersCount() {
-    // Use fallback if Azure SDK not initialized
+    // Use fallback or zeros if Azure SDK not initialized or demo disabled
     if (!this.credential || !this.containerClient) {
+      if (this.disableDemo) {
+        return { total: 0, running: 0, change: '+0' };
+      }
       return { total: 1429, running: 1405, change: '+54' };
     }
 
@@ -193,6 +196,9 @@ class AzureService {
       };
     } catch (error) {
       console.error('Error fetching containers count:', error);
+      if (this.disableDemo) {
+        return { total: 0, running: 0, change: '+0' };
+      }
       return { total: 1429, running: 1405, change: '+54' };
     }
   }
