@@ -1,4 +1,4 @@
-const { DefaultAzureCredential } = require('@azure/identity');
+const { DefaultAzureCredential, ClientSecretCredential } = require('@azure/identity');
 const { MonitorQueryClient } = require('@azure/monitor-query');
 const { ResourceManagementClient } = require('@azure/arm-resources');
 const { ComputeManagementClient } = require('@azure/arm-compute');
@@ -14,6 +14,9 @@ class AzureService {
     this.subscriptionId = process.env.AZURE_SUBSCRIPTION_ID;
     this.resourceGroupName = process.env.AZURE_RESOURCE_GROUP;
     this.logAnalyticsWorkspaceId = process.env.LOG_ANALYTICS_WORKSPACE_ID;
+    const envClientId = process.env.AZURE_CLIENT_ID;
+    const envClientSecret = process.env.AZURE_CLIENT_SECRET;
+    const envTenantId = process.env.AZURE_TENANT_ID;
     
     // Debug logging
     console.log('🔍 Azure Configuration Check:');
@@ -23,17 +26,25 @@ class AzureService {
     console.log('   AZURE_CLIENT_SECRET:', process.env.AZURE_CLIENT_SECRET ? '✓ Set' : '✗ Missing');
     console.log('   AZURE_TENANT_ID:', process.env.AZURE_TENANT_ID ? '✓ Set' : '✗ Missing');
     
-    // Only initialize Azure clients if credentials are available
+    // Only initialize Azure clients if configuration is available
     if (this.subscriptionId && this.resourceGroupName) {
       try {
         console.log('🔄 Attempting to initialize Azure clients...');
-        this.credential = new DefaultAzureCredential();
+        let credentialType = 'DefaultAzureCredential';
+        if (envClientId && envClientSecret && envTenantId) {
+          this.credential = new ClientSecretCredential(envTenantId, envClientId, envClientSecret);
+          credentialType = 'ClientSecretCredential (Service Principal)';
+        } else {
+          this.credential = new DefaultAzureCredential();
+          credentialType = 'DefaultAzureCredential (chained)';
+        }
         this.monitorQueryClient = new MonitorQueryClient(this.credential);
         this.resourcesClient = new ResourceManagementClient(this.credential, this.subscriptionId);
         this.computeClient = new ComputeManagementClient(this.credential, this.subscriptionId);
         this.containerClient = new ContainerInstanceManagementClient(this.credential, this.subscriptionId);
         this.monitorClient = new MonitorClient(this.credential, this.subscriptionId);
         console.log('✅ Azure clients initialized successfully - using REAL Azure data');
+        console.log(`   Credential: ${credentialType}`);
       } catch (error) {
         console.error('❌ Azure credential initialization failed:', error.message);
         console.warn('⚠️  Using demo data instead');
