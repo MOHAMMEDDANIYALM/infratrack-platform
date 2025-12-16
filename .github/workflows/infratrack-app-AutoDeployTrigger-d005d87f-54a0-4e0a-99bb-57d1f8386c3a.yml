@@ -35,15 +35,15 @@ jobs:
         uses: azure/container-apps-deploy-action@v2
         with:
           appSourcePath: ${{ github.workspace }}
-          _dockerfilePathKey_: _dockerfilePath_
-          _targetLabelKey_: _targetLabel_
           registryUrl: infratrackacr.azurecr.io
           registryUsername: ${{ secrets.INFRATRACKAPP_REGISTRY_USERNAME }}
           registryPassword: ${{ secrets.INFRATRACKAPP_REGISTRY_PASSWORD }}
           containerAppName: infratrack-app
           resourceGroup: infratrack-rg
-          imageToBuild: infratrackacr.azurecr.io/infratrack-app:${{ github.sha }}
-          _buildArgumentsKey_: |
-            _buildArgumentsValues_
+          imageToBuild: infratrackacr.azurecr.io/infratrack-platform:${{ github.sha }}
+          dockerfilePath: ./Dockerfile
+          targetLabel: latest
+          buildArguments: |
+            PORT=8080
 
 
