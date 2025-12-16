@@ -13,31 +13,23 @@ import {
 
 const Dashboard = () => {
   const [metrics, setMetrics] = useState({
-    cpu: 67,
-    ram: 54,
-    disk: 78,
-    network: 1234,
+    cpu: 0,
+    ram: 0,
+    disk: 0,
+    network: 0,
   });
 
   const [stats, setStats] = useState([
-    { name: 'Active Servers', value: '248', change: '+12', icon: ServerIcon, color: 'cyan' },
-    { name: 'Containers', value: '1,429', change: '+54', icon: CircleStackIcon, color: 'blue' },
-    { name: 'Uptime', value: '99.97%', change: '+0.02', icon: CheckCircleIcon, color: 'green' },
-    { name: 'Error Rate', value: '0.03%', change: '-0.01', icon: ExclamationTriangleIcon, color: 'red' },
+    { name: 'Active Servers', value: '0', change: '+0', icon: ServerIcon, color: 'cyan' },
+    { name: 'Containers', value: '0', change: '+0', icon: CircleStackIcon, color: 'blue' },
+    { name: 'Uptime', value: '0%', change: '+0', icon: CheckCircleIcon, color: 'green' },
+    { name: 'Error Rate', value: '0%', change: '+0', icon: ExclamationTriangleIcon, color: 'red' },
   ]);
 
-  const [activeServers, setActiveServers] = useState([
-    { name: 'EU-WEST-2-APP-01', status: 'healthy', cpu: 67, ram: 54, uptime: '45d 12h' },
-    { name: 'US-EAST-1-DB-03', status: 'warning', cpu: 89, ram: 78, uptime: '120d 5h' },
-    { name: 'ASIA-SOUTH-WEB-05', status: 'healthy', cpu: 34, ram: 42, uptime: '89d 18h' },
-    { name: 'EU-CENTRAL-API-02', status: 'healthy', cpu: 45, ram: 61, uptime: '67d 9h' },
-  ]);
+  const [activeServers, setActiveServers] = useState([]);
 
-  const [recentAlerts, setRecentAlerts] = useState([
-    { id: 1, type: 'critical', server: 'EU-WEST-2-APP-01', message: 'CPU usage exceeded 95%', time: '2 min ago' },
-    { id: 2, type: 'warning', server: 'US-EAST-1-DB-03', message: 'High memory consumption', time: '15 min ago' },
-    { id: 3, type: 'info', server: 'ASIA-SOUTH-WEB-05', message: 'Scheduled maintenance upcoming', time: '1 hour ago' },
-  ]);
+  const [recentAlerts, setRecentAlerts] = useState([]);
+  const [azureInitialized, setAzureInitialized] = useState(false);
 
   const [refreshing, setRefreshing] = useState(false);
   const [connected, setConnected] = useState(false);
@@ -59,6 +51,9 @@ const Dashboard = () => {
 
     const handleDashboardUpdate = (data) => {
       console.log('📊 Received dashboard update:', data);
+      if (typeof data.azureInitialized === 'boolean') {
+        setAzureInitialized(data.azureInitialized);
+      }
       
       // Update metrics
       if (data.metrics) {
@@ -77,13 +72,13 @@ const Dashboard = () => {
       }
 
       // Update active servers
-      if (data.servers && data.servers.length > 0) {
-        setActiveServers(data.servers.slice(0, 4)); // Show top 4 servers
+      if (data.servers) {
+        setActiveServers((data.servers || []).slice(0, 4)); // Accept empty to clear demo
       }
 
       // Update alerts
-      if (data.alerts && data.alerts.length > 0) {
-        setRecentAlerts(data.alerts.slice(0, 3)); // Show top 3 alerts
+      if (data.alerts) {
+        setRecentAlerts((data.alerts || []).slice(0, 3)); // Accept empty to clear demo
       }
 
       // Update timestamp
@@ -288,32 +283,38 @@ const Dashboard = () => {
             <ServerIcon className="w-6 h-6 mr-2 text-cyan-400" />
             Active Servers
           </h3>
-          <div className="space-y-3">
-            {activeServers.map((server) => (
-              <div
-                key={server.name}
-                className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 hover:border-cyan-500/30 transition-all"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center space-x-2">
-                    <div className={`w-2 h-2 rounded-full ${getStatusColor(server.status)} animate-pulse`}></div>
-                    <span className="text-white font-medium">{server.name}</span>
+          {activeServers.length === 0 ? (
+            <div className="text-gray-400 text-sm border border-gray-700 rounded-lg p-4 bg-gray-800/30">
+              {azureInitialized ? 'No servers found in your subscription.' : 'Awaiting Azure initialization or no data.'}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {activeServers.map((server) => (
+                <div
+                  key={server.name}
+                  className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 hover:border-cyan-500/30 transition-all"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-2">
+                      <div className={`w-2 h-2 rounded-full ${getStatusColor(server.status)} animate-pulse`}></div>
+                      <span className="text-white font-medium">{server.name}</span>
+                    </div>
+                    <span className="text-xs text-gray-400">{server.uptime}</span>
                   </div>
-                  <span className="text-xs text-gray-400">{server.uptime}</span>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <span className="text-gray-400">CPU:</span>{' '}
+                      <span className={server.cpu > 80 ? 'text-red-400' : 'text-green-400'}>{server.cpu}%</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-400">RAM:</span>{' '}
+                      <span className={server.ram > 70 ? 'text-yellow-400' : 'text-green-400'}>{server.ram}%</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div>
-                    <span className="text-gray-400">CPU:</span>{' '}
-                    <span className={server.cpu > 80 ? 'text-red-400' : 'text-green-400'}>{server.cpu}%</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-400">RAM:</span>{' '}
-                    <span className={server.ram > 70 ? 'text-yellow-400' : 'text-green-400'}>{server.ram}%</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Recent Alerts */}
@@ -322,20 +323,26 @@ const Dashboard = () => {
             <ExclamationTriangleIcon className="w-6 h-6 mr-2 text-yellow-400" />
             Recent Alerts
           </h3>
-          <div className="space-y-3">
-            {recentAlerts.map((alert) => (
-              <div
-                key={alert.id}
-                className={`border-l-4 ${getAlertColor(alert.type)} p-4 rounded-r-lg hover:bg-gray-800/50 transition-all cursor-pointer`}
-              >
-                <div className="flex items-start justify-between mb-1">
-                  <span className="text-white font-medium text-sm">{alert.server}</span>
-                  <span className="text-xs text-gray-400">{alert.time}</span>
+          {recentAlerts.length === 0 ? (
+            <div className="text-gray-400 text-sm border border-gray-700 rounded-lg p-4 bg-gray-800/30">
+              No active alerts.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {recentAlerts.map((alert) => (
+                <div
+                  key={alert.id}
+                  className={`border-l-4 ${getAlertColor(alert.type)} p-4 rounded-r-lg hover:bg-gray-800/50 transition-all cursor-pointer`}
+                >
+                  <div className="flex items-start justify-between mb-1">
+                    <span className="text-white font-medium text-sm">{alert.server}</span>
+                    <span className="text-xs text-gray-400">{alert.time}</span>
+                  </div>
+                  <p className="text-gray-300 text-sm">{alert.message}</p>
                 </div>
-                <p className="text-gray-300 text-sm">{alert.message}</p>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
           <button className="w-full mt-4 py-2 bg-gray-800 hover:bg-gray-700 text-cyan-400 rounded-lg transition-all text-sm font-medium">
             View All Alerts
           </button>
@@ -348,7 +355,7 @@ const Dashboard = () => {
           <div className="flex items-center space-x-3">
             <div className={`w-3 h-3 rounded-full ${connected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
             <span className="text-white font-semibold">
-              {connected ? 'All Systems Operational - Live Data' : 'Connecting to Azure...'}
+              {connected ? (azureInitialized ? 'Live Azure Data' : 'Connected — awaiting Azure data') : 'Connecting to Azure...'}
             </span>
           </div>
           <span className="text-gray-400 text-sm">Last updated: {lastUpdate}</span>
