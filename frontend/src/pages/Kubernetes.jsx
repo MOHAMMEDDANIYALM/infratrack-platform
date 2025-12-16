@@ -1,23 +1,28 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CpuChipIcon, CheckCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { dashboardAPI } from '../services/api';
 
 const Kubernetes = () => {
   const [selectedCluster, setSelectedCluster] = useState('prod-cluster-1');
+  const [containers, setContainers] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const clusters = [
+  // Fallback demo data
+  const demoClusters = [
     { name: 'prod-cluster-1', nodes: 12, pods: 248, status: 'healthy' },
     { name: 'staging-cluster-1', nodes: 6, pods: 89, status: 'healthy' },
     { name: 'dev-cluster-1', nodes: 4, pods: 45, status: 'warning' },
   ];
 
-  const nodes = [
+  const demoNodes = [
     { name: 'node-1', status: 'Ready', cpu: 45, memory: 62, pods: 28 },
     { name: 'node-2', status: 'Ready', cpu: 67, memory: 54, pods: 32 },
     { name: 'node-3', status: 'Ready', cpu: 34, memory: 48, pods: 24 },
     { name: 'node-4', status: 'NotReady', cpu: 0, memory: 0, pods: 0 },
   ];
 
-  const pods = [
+  const demoPods = [
     {
       name: 'frontend-deployment-7d9f8b6c5d-x8k2m',
       namespace: 'production',
@@ -51,6 +56,29 @@ const Kubernetes = () => {
       node: 'node-2',
     },
   ];
+
+  useEffect(() => {
+    const fetchContainers = async () => {
+      try {
+        setLoading(true);
+        const data = await dashboardAPI.getContainers();
+        setContainers(data);
+      } catch (e) {
+        console.error('Failed to fetch containers:', e);
+        setError('Failed to load Kubernetes data (using demo data)');
+        // Use fallback data if fetch fails
+        setContainers(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchContainers();
+  }, []);
+
+  // Use containers data if available, otherwise use demo data
+  const clusters = demoClusters;
+  const nodes = demoNodes;
+  const pods = demoPods;
 
   const getStatusColor = (status) => {
     if (status === 'healthy' || status === 'Ready' || status === 'Running') return 'text-green-400 bg-green-500/20';

@@ -1,97 +1,36 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   BellIcon,
   ExclamationTriangleIcon,
   CheckCircleIcon,
   XCircleIcon,
+  ArrowPathIcon,
 } from '@heroicons/react/24/outline';
+import { dashboardAPI } from '../services/api';
 
 const Alerts = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterPriority, setFilterPriority] = useState('all');
+  const [alerts, setAlerts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const alerts = [
-    {
-      id: 1,
-      title: 'High CPU Usage Alert',
-      description: 'Server EU-WEST-2-APP-01 CPU usage exceeded 95% threshold',
-      priority: 'critical',
-      status: 'active',
-      timestamp: '2025-12-08 14:32:45',
-      service: 'Compute',
-      affected: 'EU-WEST-2-APP-01',
-    },
-    {
-      id: 2,
-      title: 'Server Down',
-      description: 'Server EU-CENTRAL-API-02 is not responding',
-      priority: 'critical',
-      status: 'active',
-      timestamp: '2025-12-08 14:25:12',
-      service: 'Compute',
-      affected: 'EU-CENTRAL-API-02',
-    },
-    {
-      id: 3,
-      title: 'Budget Exceeded',
-      description: 'Monthly cloud cost exceeded 90% of budget limit',
-      priority: 'high',
-      status: 'active',
-      timestamp: '2025-12-08 13:45:30',
-      service: 'Billing',
-      affected: 'All Services',
-    },
-    {
-      id: 4,
-      title: 'Unauthorized Access Attempt',
-      description: 'Multiple failed login attempts detected from IP 192.168.1.100',
-      priority: 'high',
-      status: 'acknowledged',
-      timestamp: '2025-12-08 12:18:22',
-      service: 'Security',
-      affected: 'Auth Service',
-    },
-    {
-      id: 5,
-      title: 'High Memory Usage',
-      description: 'Database server RAM usage at 85%',
-      priority: 'medium',
-      status: 'resolved',
-      timestamp: '2025-12-08 11:30:15',
-      service: 'Database',
-      affected: 'US-EAST-1-DB-03',
-    },
-    {
-      id: 6,
-      title: 'Pod Restart Loop',
-      description: 'Kubernetes pod cache-redis restarted 15 times',
-      priority: 'medium',
-      status: 'active',
-      timestamp: '2025-12-08 10:45:08',
-      service: 'Kubernetes',
-      affected: 'cache-redis pod',
-    },
-    {
-      id: 7,
-      title: 'SSL Certificate Expiring',
-      description: 'SSL certificate for api.enterprise.sa expiring in 7 days',
-      priority: 'low',
-      status: 'active',
-      timestamp: '2025-12-08 09:00:00',
-      service: 'Security',
-      affected: 'api.enterprise.sa',
-    },
-    {
-      id: 8,
-      title: 'Disk Space Warning',
-      description: 'Server storage usage at 78%',
-      priority: 'low',
-      status: 'acknowledged',
-      timestamp: '2025-12-08 08:15:42',
-      service: 'Storage',
-      affected: 'ASIA-SOUTH-WEB-05',
-    },
-  ];
+  useEffect(() => {
+    const fetchAlerts = async () => {
+      try {
+        setLoading(true);
+        const data = await dashboardAPI.getAlerts({ limit: 100 });
+        setAlerts(Array.isArray(data?.alerts) ? data.alerts : []);
+      } catch (e) {
+        console.error('Failed to fetch alerts:', e);
+        setError('Failed to load alerts');
+        setAlerts([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAlerts();
+  }, []);
 
   const getPriorityColor = (priority) => {
     switch (priority) {
@@ -202,6 +141,24 @@ const Alerts = () => {
 
       {/* Alerts List */}
       <div className="space-y-4">
+        {loading && (
+          <div className="bg-gray-900/50 border border-cyan-500/20 rounded-xl p-8 text-center">
+            <p className="text-gray-400">Loading alerts...</p>
+          </div>
+        )}
+
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-400">
+            {error}
+          </div>
+        )}
+
+        {!loading && filteredAlerts.length === 0 && (
+          <div className="bg-gray-900/50 border border-cyan-500/20 rounded-xl p-8 text-center">
+            <p className="text-gray-400">No alerts match the selected filters</p>
+          </div>
+        )}
+
         {filteredAlerts.map((alert) => {
           const StatusIcon = getStatusIcon(alert.status);
           return (

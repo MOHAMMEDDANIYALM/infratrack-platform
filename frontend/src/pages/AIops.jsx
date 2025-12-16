@@ -1,10 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MagnifyingGlassIcon, SparklesIcon, LightBulbIcon, ChartBarIcon } from '@heroicons/react/24/outline';
+import { dashboardAPI } from '../services/api';
 
 const AIops = () => {
   const [selectedTab, setSelectedTab] = useState('predictions');
+  const [predictions, setPredictions] = useState([]);
+  const [anomalies, setAnomalies] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const predictions = [
+  // Fallback demo data
+  const demoPredictions = [
     {
       id: 1,
       title: 'Server EU-WEST-2-APP-01 Failure Prediction',
@@ -34,7 +40,7 @@ const AIops = () => {
     },
   ];
 
-  const anomalies = [
+  const demoAnomalies = [
     {
       id: 1,
       metric: 'Network Traffic',
@@ -63,6 +69,29 @@ const AIops = () => {
       confidence: 76,
     },
   ];
+
+  useEffect(() => {
+    const fetchAIData = async () => {
+      try {
+        setLoading(true);
+        const [predictionsData, anomaliesData] = await Promise.all([
+          dashboardAPI.getPredictions({ limit: 10 }).catch(() => ({ predictions: demoPredictions })),
+          dashboardAPI.getAnomalies({ limit: 10 }).catch(() => ({ anomalies: demoAnomalies })),
+        ]);
+
+        setPredictions(Array.isArray(predictionsData?.predictions) ? predictionsData.predictions : demoPredictions);
+        setAnomalies(Array.isArray(anomaliesData?.anomalies) ? anomaliesData.anomalies : demoAnomalies);
+      } catch (e) {
+        console.error('Failed to fetch AI data:', e);
+        setError('Using demo data');
+        setPredictions(demoPredictions);
+        setAnomalies(demoAnomalies);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAIData();
+  }, []);
 
   const scalingRecommendations = [
     {

@@ -163,6 +163,23 @@ export const dashboardAPI = {
   },
 
   getUsers: () => api.get('/users'),
+
+  getContainers: () =>
+    api.get('/containers'),
+
+  getAnomalies: (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.limit) params.append('limit', filters.limit);
+    if (filters.skip) params.append('skip', filters.skip);
+    return api.get(`/anomalies?${params.toString()}`);
+  },
+
+  getPredictions: (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.limit) params.append('limit', filters.limit);
+    if (filters.skip) params.append('skip', filters.skip);
+    return api.get(`/predictions?${params.toString()}`);
+  },
 };
 
 // Azure-backed resources (servers, metrics, alerts, stats)
