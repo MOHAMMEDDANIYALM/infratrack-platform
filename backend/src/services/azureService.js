@@ -1,5 +1,5 @@
 const { DefaultAzureCredential, ClientSecretCredential } = require('@azure/identity');
-const { MonitorQueryClient } = require('@azure/monitor-query');
+const { MetricsQueryClient } = require('@azure/monitor-query');
 const { ResourceManagementClient } = require('@azure/arm-resources');
 const { ComputeManagementClient } = require('@azure/arm-compute');
 const { ContainerInstanceManagementClient } = require('@azure/arm-containerinstance');
@@ -42,7 +42,7 @@ class AzureService {
           credentialType = 'DefaultAzureCredential (chained)';
         }
         this.credentialType = credentialType;
-        this.monitorQueryClient = new MonitorQueryClient(this.credential);
+        this.metricsQueryClient = new MetricsQueryClient(this.credential);
         this.resourcesClient = new ResourceManagementClient(this.credential, this.subscriptionId);
         this.computeClient = new ComputeManagementClient(this.credential, this.subscriptionId);
         this.containerClient = new ContainerInstanceManagementClient(this.credential, this.subscriptionId);
@@ -126,12 +126,11 @@ class AzureService {
       const startTime = new Date(endTime.getTime() - 5 * 60 * 1000); // Last 5 minutes
 
       // Query multiple metrics at once
-      const metricsResponse = await this.monitorQueryClient.queryResource(
+      const metricsResponse = await this.metricsQueryClient.queryResource(
         resourceId,
         ['Percentage CPU', 'Available Memory Bytes', 'Disk Read Bytes', 'Disk Write Bytes'],
         {
-          timespan: { start: startTime, end: endTime },
-          granularity: 'PT1M',
+          timespan: 'PT5M',
           aggregations: ['Average']
         }
       );
@@ -296,12 +295,11 @@ class AzureService {
           const endTime = new Date();
           const startTime = new Date(endTime.getTime() - 5 * 60 * 1000);
 
-          const networkMetrics = await this.monitorQueryClient.queryResource(
+          const networkMetrics = await this.metricsQueryClient.queryResource(
             server.id,
             ['Network In Total', 'Network Out Total'],
             {
-              timespan: { start: startTime, end: endTime },
-              granularity: 'PT1M',
+              timespan: 'PT5M',
               aggregations: ['Total']
             }
           );
