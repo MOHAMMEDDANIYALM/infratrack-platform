@@ -4,6 +4,7 @@ const { ResourceManagementClient } = require('@azure/arm-resources');
 const { ComputeManagementClient } = require('@azure/arm-compute');
 const { ContainerInstanceManagementClient } = require('@azure/arm-containerinstance');
 const { MonitorClient } = require('@azure/arm-monitor');
+const { ConsumptionManagementClient } = require('@azure/arm-consumption');
 
 /**
  * Azure Service Integration Layer
@@ -48,6 +49,7 @@ class AzureService {
         this.computeClient = new ComputeManagementClient(this.credential, this.subscriptionId);
         this.containerClient = new ContainerInstanceManagementClient(this.credential, this.subscriptionId);
         this.monitorClient = new MonitorClient(this.credential, this.subscriptionId);
+        this.consumptionClient = new ConsumptionManagementClient(this.credential, this.subscriptionId);
         console.log('✅ Azure clients initialized successfully - using REAL Azure data');
         console.log(`   Credential: ${credentialType}`);
       } catch (error) {
@@ -498,10 +500,25 @@ class AzureService {
     }
 
     try {
+      // Try Cost Management Query API first (richer dataset)
+      const cm = await this.queryCostManagementAPI({ startDate, endDate, service });
+      if (cm && Array.isArray(cm.costs) && cm.costs.length) return cm;
+
+      // Fallback: Use ConsumptionManagementClient (UsageDetails) if CostManagement is blocked
+      const usage = await this.queryConsumptionAPI({ startDate, endDate, service });
+      if (usage && Array.isArray(usage.costs) && usage.costs.length) return usage;
+
+      return null;
+    } catch (error) {
+      console.error('Error fetching Azure cost data:', error && (error.stack || error.message));
+      return null;
+    }
+  }
+
+  async queryCostManagementAPI({ startDate, endDate, service }) {
+    try {
       const token = await this.credential.getToken('https://management.azure.com/.default');
-      if (!token?.token) {
-        return null;
-      }
+      if (!token?.token) return null;
 
       const now = new Date();
       const fromDate = startDate ? new Date(startDate) : new Date(now.getFullYear(), now.getMonth(), 1);
@@ -511,15 +528,10 @@ class AzureService {
       const body = {
         type: 'ActualCost',
         timeframe: 'Custom',
-        timePeriod: {
-          from: fromDate,
-          to: toDate
-        },
+        timePeriod: { from: fromDate, to: toDate },
         dataset: {
           granularity: 'Daily',
-          aggregation: {
-            totalCost: { name: 'Cost', function: 'Sum' }
-          },
+          aggregation: { totalCost: { name: 'Cost', function: 'Sum' } },
           grouping: [
             { type: 'Dimension', name: 'ServiceName' },
             { type: 'Dimension', name: 'ResourceGroupName' }
@@ -531,10 +543,7 @@ class AzureService {
         `https://management.azure.com${scope}/providers/Microsoft.CostManagement/query?api-version=2023-08-01`,
         {
           method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token.token}`,
-            'Content-Type': 'application/json'
-          },
+          headers: { Authorization: `Bearer ${token.token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify(body)
         }
       );
@@ -548,16 +557,9 @@ class AzureService {
       const result = await response.json();
       const columns = result?.properties?.columns || [];
       const rows = result?.properties?.rows || [];
+      if (!columns.length || !rows.length) return null;
 
-      if (!columns.length || !rows.length) {
-        return null;
-      }
-
-      const columnIndex = columns.reduce((acc, col, idx) => {
-        acc[col.name] = idx;
-        return acc;
-      }, {});
-
+      const columnIndex = columns.reduce((acc, col, idx) => { acc[col.name] = idx; return acc; }, {});
       const costs = rows
         .map((row) => {
           const rawCost = row[columnIndex.Cost] ?? row[columnIndex.PreTaxCost] ?? row[columnIndex.ExtendedCost] ?? 0;
@@ -568,26 +570,59 @@ class AzureService {
           const resourceGroup = row[columnIndex.ResourceGroupName] || '';
           const finalService = resourceGroup ? `${serviceName} (${resourceGroup})` : serviceName;
           const costInInr = this.convertToInr(Number(rawCost) || 0, currency);
-
-          return {
-            date,
-            service: finalService,
-            cost: costInInr,
-            currency: 'INR'
-          };
+          return { date, service: finalService, cost: costInInr, currency: 'INR' };
         })
         .filter((item) => !service || item.service?.toLowerCase().includes(String(service).toLowerCase()));
 
       const totalCost = costs.reduce((sum, c) => sum + (c.cost || 0), 0);
+      return { costs, totalCost, currency: 'INR', source: 'azure-costmanagement' };
+    } catch (e) {
+      console.warn('CostManagement API error:', e?.message || e);
+      return null;
+    }
+  }
 
-      return {
-        costs,
-        totalCost,
-        currency: 'INR',
-        source: 'azure'
-      };
-    } catch (error) {
-      console.error('Error fetching Azure cost data:', error && (error.stack || error.message));
+  async queryConsumptionAPI({ startDate, endDate, service }) {
+    try {
+      if (!this.consumptionClient) return null;
+      const now = new Date();
+      const fromDate = startDate ? new Date(startDate) : new Date(now.getFullYear(), now.getMonth(), 1);
+      const toDate = endDate ? new Date(endDate) : now;
+
+      // Enumerate usage details and aggregate per day/service
+      const costsMap = new Map();
+      const iter = this.consumptionClient.usageDetails.list(`/subscriptions/${this.subscriptionId}`, {
+        expand: 'properties/meterDetails',
+        // Top is per page, we iterate all pages; filter by date range below
+      });
+
+      for await (const item of iter) {
+        const charge = item?.properties;
+        if (!charge) continue;
+        const date = new Date(charge?.usageStart || charge?.usageEnd || charge?.billingPeriodStartDate || now);
+        if (date < fromDate || date > toDate) continue;
+        const meterCategory = charge?.meterDetails?.meterCategory || charge?.meterCategory || 'Other';
+        const rg = charge?.resourceGroup || '';
+        const key = `${date.toISOString().slice(0,10)}|${meterCategory}|${rg}`;
+        const amount = Number(charge?.cost) || Number(charge?.pretaxCost) || 0;
+        const currency = charge?.billingCurrency || charge?.currency || 'USD';
+        const inr = this.convertToInr(amount, currency);
+        const prev = costsMap.get(key) || 0;
+        costsMap.set(key, prev + inr);
+      }
+
+      const costs = Array.from(costsMap.entries()).map(([k, val]) => {
+        const [d, svc, rg] = k.split('|');
+        const date = new Date(d);
+        const serviceName = rg ? `${svc} (${rg})` : svc;
+        return { date, service: serviceName, cost: val, currency: 'INR' };
+      }).filter((item) => !service || item.service?.toLowerCase().includes(String(service).toLowerCase()))
+        .sort((a, b) => a.date - b.date);
+
+      const totalCost = costs.reduce((sum, c) => sum + (c.cost || 0), 0);
+      return { costs, totalCost, currency: 'INR', source: 'azure-consumption' };
+    } catch (e) {
+      console.warn('Consumption API error:', e?.message || e);
       return null;
     }
   }
