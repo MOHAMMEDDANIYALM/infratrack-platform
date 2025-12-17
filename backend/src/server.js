@@ -155,17 +155,10 @@ if (!process.env.JWT_SECRET || !process.env.JWT_REFRESH_SECRET) {
 
 (async () => {
   try {
-    // Attempt DB connection (non-blocking)
-    let dbConnected = false;
-    try {
-      dbConnected = await connectDB();
-    } catch (dbError) {
-      console.warn('⚠️  Database connection failed:', dbError.message);
-      console.warn('⚠️  Continuing without database...');
-    }
-    
-    // Start server - this MUST succeed
+    // Start server FIRST - don't wait for DB
+    console.log(`🔄 Attempting to listen on port ${PORT} at 0.0.0.0...`);
     server.listen(PORT, '0.0.0.0', () => {
+      console.log(`✅ Server is listening on ${PORT}`);
       console.log(`InfraTrack started (env=${process.env.NODE_ENV || 'development'})`);
       
       // Keep alive - Azure needs to see the process running
@@ -182,6 +175,19 @@ if (!process.env.JWT_SECRET || !process.env.JWT_REFRESH_SECRET) {
         console.error(`🔴 Permission denied for port ${PORT}`);
         process.exit(1);
       }
+    });
+
+    // Attempt DB connection in background (don't wait)
+    console.log('🔄 Attempting database connection...');
+    connectDB().then(connected => {
+      if (connected) {
+        console.log('✅ Database connected successfully');
+      } else {
+        console.warn('⚠️  Database not available - using demo data for all endpoints');
+      }
+    }).catch(err => {
+      console.warn('⚠️  Database connection error:', err.message);
+      console.warn('⚠️  Using demo data for all endpoints');
     });
     
   } catch (err) {
