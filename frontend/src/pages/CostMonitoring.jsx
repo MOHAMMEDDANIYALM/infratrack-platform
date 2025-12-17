@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CurrencyDollarIcon, ChartBarIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { ChartBarIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { dashboardAPI } from '../services/api';
 
 const CostMonitoring = () => {
@@ -7,7 +7,7 @@ const CostMonitoring = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [costs, setCosts] = useState([]);
-  const [budgetLimit] = useState(50000);
+  const [budgetLimit] = useState(5000000); // 50 Lakh Rupees
 
   useEffect(() => {
     const fetchCosts = async () => {
@@ -77,20 +77,20 @@ const CostMonitoring = () => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-gradient-to-br from-cyan-600/20 to-blue-600/20 border border-cyan-500/30 rounded-xl p-6">
           <p className="text-gray-300 text-sm mb-1">Monthly Cost</p>
-          <p className="text-4xl font-bold text-white">${monthlyTotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+          <p className="text-4xl font-bold text-white">₹ {monthlyTotal.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</p>
         </div>
         <div className="bg-gray-900/50 border border-green-500/20 rounded-xl p-6">
           <p className="text-gray-400 text-sm mb-1">Daily Average</p>
-          <p className="text-3xl font-bold text-green-400">${dailyAverage.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+          <p className="text-3xl font-bold text-green-400">₹ {dailyAverage.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</p>
         </div>
         <div className="bg-gray-900/50 border border-yellow-500/20 rounded-xl p-6">
           <p className="text-gray-400 text-sm mb-1">Forecast (Month End)</p>
-          <p className="text-3xl font-bold text-yellow-400">${forecast.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+          <p className="text-3xl font-bold text-yellow-400">₹ {forecast.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</p>
         </div>
         <div className="bg-gray-900/50 border border-blue-500/20 rounded-xl p-6">
           <p className="text-gray-400 text-sm mb-1">Budget Remaining</p>
           <p className="text-3xl font-bold text-blue-400">
-            {(Math.max(0, budgetLimit - monthlyTotal)).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+            ₹ {(Math.max(0, budgetLimit - monthlyTotal)).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
           </p>
         </div>
       </div>
@@ -100,7 +100,7 @@ const CostMonitoring = () => {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-xl font-bold text-white">Budget Usage</h3>
-            <p className="text-gray-400 text-sm">Monthly limit: ${budgetLimit.toLocaleString()}</p>
+            <p className="text-gray-400 text-sm">Monthly limit: ₹ {budgetLimit.toLocaleString('en-IN')}</p>
           </div>
           <span className={`text-2xl font-bold ${budgetUsage > 90 ? 'text-red-400' : 'text-cyan-400'}`}>
             {budgetUsage.toFixed(1)}%
@@ -146,7 +146,7 @@ const CostMonitoring = () => {
                     <span className={`text-sm ${service.trend?.startsWith('+') ? 'text-red-400' : 'text-green-400'}`}>
                       {service.trend || ''}
                     </span>
-                    <span className="text-white font-semibold">${service.cost.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                    <span className="text-white font-semibold">₹ {service.cost.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
                   </div>
                 </div>
                 <div className="w-full bg-gray-800 rounded-full h-2 overflow-hidden">

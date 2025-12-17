@@ -52,9 +52,9 @@ const Topbar = () => {
 
     try {
       const [servers, logs, deployments] = await Promise.all([
-        dashboardAPI.getServers?.() || azureAPI.getServers?.().catch(() => ({ servers: [] })),
-        dashboardAPI.getLogs?.({ search: term, limit: 3 }).catch(() => ({ logs: [] })),
-        dashboardAPI.getDeployments?.({ limit: 3 }).catch(() => ({ deployments: [] })),
+        azureAPI.getServers?.().catch(() => ({ servers: [] })) || { servers: [] },
+        dashboardAPI.getLogs?.({ search: term, limit: 3 }).catch(() => ({ logs: [] })) || { logs: [] },
+        dashboardAPI.getDeployments?.({ limit: 3 }).catch(() => ({ deployments: [] })) || { deployments: [] },
       ]);
 
       const results = [];

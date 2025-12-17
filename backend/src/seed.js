@@ -178,39 +178,81 @@ const seedDatabase = async () => {
     ]);
     console.log('✅ Created 3 demo alerts');
 
-    // Create demo cost data
+    // Create demo cost data (in INR - Indian Rupees)
     const startDate = new Date(now.getFullYear(), now.getMonth(), 1);
     const costs = await Cost.insertMany([
       {
         organizationId: 'SA-GOV-001',
         date: startDate,
         service: 'Compute',
-        cost: 15000,
+        cost: 1250000, // ₹12.5 Lakhs - VM instances
         region: 'sa-central',
       },
       {
         organizationId: 'SA-GOV-001',
         date: startDate,
         service: 'Storage',
-        cost: 8500,
+        cost: 750000, // ₹7.5 Lakhs - Database & Blob storage
         region: 'sa-central',
       },
       {
         organizationId: 'SA-GOV-001',
         date: startDate,
         service: 'Networking',
-        cost: 3200,
+        cost: 350000, // ₹3.5 Lakhs - Load balancer, VPN, bandwidth
         region: 'sa-central',
       },
       {
         organizationId: 'SA-GOV-001',
         date: startDate,
         service: 'Database',
-        cost: 12000,
+        cost: 850000, // ₹8.5 Lakhs - Cosmos DB, MySQL
+        region: 'sa-central',
+      },
+      {
+        organizationId: 'SA-GOV-001',
+        date: new Date(startDate.getTime() + 86400000 * 5),
+        service: 'Compute',
+        cost: 1300000,
+        region: 'sa-central',
+      },
+      {
+        organizationId: 'SA-GOV-001',
+        date: new Date(startDate.getTime() + 86400000 * 5),
+        service: 'Storage',
+        cost: 800000,
+        region: 'sa-central',
+      },
+      {
+        organizationId: 'SA-GOV-001',
+        date: new Date(startDate.getTime() + 86400000 * 10),
+        service: 'Compute',
+        cost: 1280000,
+        region: 'sa-central',
+      },
+      {
+        organizationId: 'SA-GOV-001',
+        date: new Date(startDate.getTime() + 86400000 * 10),
+        service: 'Database',
+        cost: 900000,
+        region: 'sa-central',
+      },
+      {
+        organizationId: 'SA-GOV-001',
+        date: new Date(startDate.getTime() + 86400000 * 15),
+        service: 'Networking',
+        cost: 380000,
+        region: 'sa-central',
+      },
+      {
+        organizationId: 'SA-GOV-001',
+        date: new Date(startDate.getTime() + 86400000 * 15),
+        service: 'Storage',
+        cost: 820000,
         region: 'sa-central',
       },
     ]);
-    console.log('✅ Created 4 demo cost records');
+    console.log('✅ Created 10 demo cost records in INR');
 
     // Create demo deployments
     const deployments = await Deployment.insertMany([
