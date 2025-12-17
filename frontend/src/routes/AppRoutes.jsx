@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthContext, AuthProvider } from '../context/AuthContext';
 import { ThemeProvider } from '../context/ThemeContext';
 import MainLayout from '../components/layout/MainLayout';
+import ErrorBoundary from '../components/ErrorBoundary';
 import Login from '../pages/Login';
 import ForgotPassword from '../pages/ForgotPassword';
 import RequestAccess from '../pages/RequestAccess';
@@ -52,7 +53,7 @@ function AppRoutes() {
           <Route path="/account-disabled" element={<AccountDisabled />} />
 
           {/* Protected Routes */}
-          <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+          <Route element={<ProtectedRoute><ErrorBoundary><MainLayout /></ErrorBoundary></ProtectedRoute>}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/servers" element={<Servers />} />
             <Route path="/kubernetes" element={<Kubernetes />} />
