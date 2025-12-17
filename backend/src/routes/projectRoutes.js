@@ -13,6 +13,7 @@ const {
   getCosts,
   getDeployments,
   getUsers,
+  createUser,
 } = require('../controllers/projectController');
 
 // Dashboard
@@ -39,5 +40,6 @@ router.get('/deployments', protect, getDeployments);
 
 // Users
 router.get('/users', protect, getUsers);
+router.post('/users', protect, authorize(['Admin']), createUser);
 
 module.exports = router;

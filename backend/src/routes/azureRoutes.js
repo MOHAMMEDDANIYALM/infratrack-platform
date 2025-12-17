@@ -143,6 +143,21 @@ router.get('/error-rate', async (req, res) => {
   }
 });
 
+// Get Azure Cost Management breakdown (INR) - unauthenticated for debug
+router.get('/costs', async (req, res) => {
+  try {
+    const { startDate, endDate, service } = req.query;
+    const data = await azureService.getCostBreakdown({ startDate, endDate, service });
+    if (!data) {
+      return res.status(503).json({ message: 'Azure cost data unavailable. Check credentials and permissions (Cost Management Reader).' });
+    }
+    res.json(data);
+  } catch (error) {
+    console.error('Error fetching Azure cost data:', error);
+    res.status(500).json({ message: 'Failed to fetch Azure cost data', error: error.message });
+  }
+});
+
 // Get all dashboard data in one request
 router.get('/dashboard', async (req, res) => {
   try {

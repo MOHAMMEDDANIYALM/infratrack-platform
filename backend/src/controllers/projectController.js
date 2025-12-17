@@ -4,6 +4,7 @@ const Alert = require('../models/Alert');
 const Cost = require('../models/Cost');
 const Deployment = require('../models/Deployment');
 const Project = require('../models/Project');
+const azureService = require('../services/azureService');
 
 // Get all servers
 exports.getServers = async (req, res) => {
@@ -175,6 +176,16 @@ exports.getLogs = async (req, res) => {
       query.message = { $regex: search, $options: 'i' };
     }
 
+    // Prefer Azure Log Analytics if configured
+    try {
+      const azureLogs = await azureService.getRecentLogs({ search, severity, limit });
+      if (Array.isArray(azureLogs) && azureLogs.length) {
+        return res.json({ logs: azureLogs.slice(parseInt(skip) || 0, (parseInt(skip) || 0) + (parseInt(limit) || 50)), total: azureLogs.length });
+      }
+    } catch (e) {
+      // continue to DB/demo
+    }
+
     try {
       const logs = await Log.find(query)
         .sort({ timestamp: -1 })
@@ -271,6 +282,29 @@ exports.getAlerts = async (req, res) => {
 
     if (status) query.status = status;
     if (severity) query.severity = severity;
+
+    // Prefer Azure alerts
+    try {
+      const azureAlerts = await azureService.getActiveAlerts();
+      if (Array.isArray(azureAlerts) && azureAlerts.length) {
+        const alerts = azureAlerts.slice(parseInt(skip) || 0).slice(0, parseInt(limit) || 50).map(a => ({
+          id: a.id,
+          title: a.name,
+          description: a.description,
+          priority: a.severity,
+          severity: a.severity,
+          status: 'active',
+          message: a.description || a.name,
+          triggeredAt: new Date().toISOString(),
+          resource: a.resourceId || 'Azure',
+          service: 'Azure Monitor',
+          affected: a.resourceId || 'Resource'
+        }));
+        return res.json({ alerts, total: azureAlerts.length, hasMore: false });
+      }
+    } catch (e) {
+      // continue to DB/demo
+    }
 
     try {
       const alerts = await Alert.find(query)
@@ -413,6 +447,12 @@ exports.getCosts = async (req, res) => {
 
     if (service) query.service = service;
 
+    // Prefer real Azure Cost Management data when available
+    const azureCosts = await azureService.getCostBreakdown({ startDate, endDate, service });
+    if (azureCosts && azureCosts.source === 'azure' && Array.isArray(azureCosts.costs) && azureCosts.costs.length) {
+      return res.json(azureCosts);
+    }
+
     try {
       const costs = await Cost.find(query).sort({ date: -1 });
       if (costs && costs.length > 0) {
@@ -457,28 +497,30 @@ exports.getDeployments = async (req, res) => {
     const ghRepo = process.env.GITHUB_REPO; // format: owner/repo
 
     if (ghToken && ghRepo) {
-      const url = new URL(`https://api.github.com/repos/${ghRepo}/actions/runs`);
-      url.searchParams.set('per_page', Math.min(parseInt(limit) || 50, 100));
-
-      const resp = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${ghToken}`,
-          Accept: 'application/vnd.github+json',
-          'X-GitHub-Api-Version': '2022-11-28',
-          'User-Agent': 'infratrack-app'
-        }
-      });
-
-      if (!resp.ok) {
-        const text = await resp.text();
-        return res.status(resp.status).json({
-          message: 'Failed to fetch GitHub workflows',
-          error: text
+      const perPage = 100;
+      const maxPages = 5; // up to 500 runs
+      const allRuns = [];
+      for (let page = 1; page <= maxPages; page++) {
+        const url = new URL(`https://api.github.com/repos/${ghRepo}/actions/runs`);
+        url.searchParams.set('per_page', perPage);
+        url.searchParams.set('page', page);
+        const resp = await fetch(url, {
+          headers: {
+            Authorization: `Bearer ${ghToken}`,
+            Accept: 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28',
+            'User-Agent': 'infratrack-app'
+          }
         });
+        if (!resp.ok) {
+          const text = await resp.text();
+          return res.status(resp.status).json({ message: 'Failed to fetch GitHub workflows', error: text });
+        }
+        const data = await resp.json();
+        const runs = Array.isArray(data.workflow_runs) ? data.workflow_runs : [];
+        allRuns.push(...runs);
+        if (runs.length < perPage) break; // no more pages
       }
-
-      const data = await resp.json();
-      const runs = Array.isArray(data.workflow_runs) ? data.workflow_runs : [];
 
       const mapStatus = (run) => {
         if (run.status === 'in_progress' || run.status === 'queued') return 'running';
@@ -488,7 +530,7 @@ exports.getDeployments = async (req, res) => {
         return 'running';
       };
 
-      const deployments = runs.slice(parseInt(skip) || 0).map((run) => {
+      const deployments = allRuns.slice(parseInt(skip) || 0).map((run) => {
         const started = run.run_started_at || run.created_at;
         const completed = run.updated_at;
         const durationSeconds = started && completed ? Math.max(0, (new Date(completed) - new Date(started)) / 1000) : 0;
@@ -507,11 +549,7 @@ exports.getDeployments = async (req, res) => {
         };
       });
 
-      return res.json({
-        deployments,
-        total: deployments.length,
-        hasMore: false
-      });
+      return res.json({ deployments, total: deployments.length, hasMore: false });
     }
 
     // Fallback to database deployments
@@ -645,6 +683,47 @@ exports.getUsers = async (req, res) => {
       .sort({ createdAt: -1 });
 
     res.json({ users });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Admin: create user
+exports.createUser = async (req, res) => {
+  try {
+    const { role } = req.user;
+    if (role !== 'Admin') {
+      return res.status(403).json({ message: 'Access denied. Admin role required.' });
+    }
+    const { name, email, password, department, organizationId, role: newRole } = req.body;
+    if (!name || !email || !password || !organizationId) {
+      return res.status(400).json({ message: 'name, email, password, organizationId are required' });
+    }
+    const User = require('../models/User');
+    const exists = await User.findOne({ email });
+    if (exists) return res.status(400).json({ message: 'User already exists' });
+    const bcrypt = require('bcryptjs');
+    const hashed = await bcrypt.hash(password, 10);
+    const user = await User.create({
+      organizationId,
+      name,
+      email,
+      password: hashed,
+      department: department || '',
+      role: newRole || 'Viewer',
+      status: 'active'
+    });
+    res.status(201).json({
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        department: user.department,
+        organizationId: user.organizationId,
+        status: user.status
+      }
+    });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }

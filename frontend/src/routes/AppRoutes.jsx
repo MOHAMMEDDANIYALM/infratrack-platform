@@ -1,6 +1,7 @@
 import { useContext } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthContext, AuthProvider } from '../context/AuthContext';
+import { ThemeProvider } from '../context/ThemeContext';
 import MainLayout from '../components/layout/MainLayout';
 import Login from '../pages/Login';
 import ForgotPassword from '../pages/ForgotPassword';
@@ -42,6 +43,7 @@ function AppRoutes() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <ThemeProvider>
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<Login />} />
@@ -66,6 +68,7 @@ function AppRoutes() {
           {/* Catch all - redirect to login */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </ThemeProvider>
       </AuthProvider>
     </BrowserRouter>
   );

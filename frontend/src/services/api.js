@@ -163,6 +163,7 @@ export const dashboardAPI = {
   },
 
   getUsers: () => api.get('/users'),
+  createUser: (user) => api.post('/users', user),
 
   getContainers: () =>
     api.get('/containers'),

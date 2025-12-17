@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChartBarIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { ChartBarIcon, CurrencyDollarIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { dashboardAPI } from '../services/api';
 
 const CostMonitoring = () => {
@@ -67,6 +67,12 @@ const CostMonitoring = () => {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+          <p className="text-red-400 font-medium">{error}</p>
+          <p className="text-gray-400 text-xs mt-1">If this persists, ensure the app can reach the backend API and you are signed in.</p>
+        </div>
+      )}
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-white mb-2">Cost Monitoring & Optimization</h1>

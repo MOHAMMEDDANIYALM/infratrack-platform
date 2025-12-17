@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { MagnifyingGlassIcon, SparklesIcon, LightBulbIcon, ChartBarIcon } from '@heroicons/react/24/outline';
-import { dashboardAPI } from '../services/api';
+import { dashboardAPI, azureAPI } from '../services/api';
 
 const AIops = () => {
   const [selectedTab, setSelectedTab] = useState('predictions');
@@ -74,13 +74,26 @@ const AIops = () => {
     const fetchAIData = async () => {
       try {
         setLoading(true);
-        const [predictionsData, anomaliesData] = await Promise.all([
-          dashboardAPI.getPredictions({ limit: 10 }).catch(() => ({ predictions: demoPredictions })),
-          dashboardAPI.getAnomalies({ limit: 10 }).catch(() => ({ anomalies: demoAnomalies })),
-        ]);
-
-        setPredictions(Array.isArray(predictionsData?.predictions) ? predictionsData.predictions : demoPredictions);
-        setAnomalies(Array.isArray(anomaliesData?.anomalies) ? anomaliesData.anomalies : demoAnomalies);
+        // Try Azure metrics/stats first, then fall back to demo
+        let stats = null;
+        try { stats = await azureAPI.getStats(); } catch {}
+        if (stats && stats.activeServers) {
+          const p = [
+            { id: 1, title: 'Compute Capacity Risk', probability: Math.min(95, parseInt(stats?.uptime?.value) > 99 ? 35 : 65), timeframe: 'Next 24 hours', reason: `Avg CPU ${stats?.metrics?.cpu || stats?.cpu || 65}%`, severity: 'medium', recommendation: 'Add node or enable auto-scale' },
+          ];
+          const a = [
+            { id: 1, metric: 'Error Rate', detected: new Date().toISOString(), deviation: stats?.errorRate?.value || '0.03%', baseline: '0.02%', actual: stats?.errorRate?.value || '0.03%', confidence: 80 },
+          ];
+          setPredictions(p);
+          setAnomalies(a);
+        } else {
+          const [predictionsData, anomaliesData] = await Promise.all([
+            dashboardAPI.getPredictions({ limit: 10 }).catch(() => ({ predictions: demoPredictions })),
+            dashboardAPI.getAnomalies({ limit: 10 }).catch(() => ({ anomalies: demoAnomalies })),
+          ]);
+          setPredictions(Array.isArray(predictionsData?.predictions) ? predictionsData.predictions : demoPredictions);
+          setAnomalies(Array.isArray(anomaliesData?.anomalies) ? anomaliesData.anomalies : demoAnomalies);
+        }
       } catch (e) {
         console.error('Failed to fetch AI data:', e);
         setError('Using demo data');

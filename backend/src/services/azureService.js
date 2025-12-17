@@ -1,5 +1,5 @@
 const { DefaultAzureCredential, ClientSecretCredential } = require('@azure/identity');
-const { MetricsQueryClient } = require('@azure/monitor-query');
+const { MetricsQueryClient, LogsQueryClient } = require('@azure/monitor-query');
 const { ResourceManagementClient } = require('@azure/arm-resources');
 const { ComputeManagementClient } = require('@azure/arm-compute');
 const { ContainerInstanceManagementClient } = require('@azure/arm-containerinstance');
@@ -43,6 +43,7 @@ class AzureService {
         }
         this.credentialType = credentialType;
         this.metricsQueryClient = new MetricsQueryClient(this.credential);
+        this.logsQueryClient = new LogsQueryClient(this.credential);
         this.resourcesClient = new ResourceManagementClient(this.credential, this.subscriptionId);
         this.computeClient = new ComputeManagementClient(this.credential, this.subscriptionId);
         this.containerClient = new ContainerInstanceManagementClient(this.credential, this.subscriptionId);
@@ -335,38 +336,74 @@ class AzureService {
    * Get active alerts from Azure Monitor
    */
   async getActiveAlerts() {
-    // Use fallback if Azure SDK not initialized
-    if (!this.credential || !this.monitorClient) {
+    // Prefer Log Analytics alerts feed for reliability
+    if (!this.credential || !this.logsQueryClient || !this.logAnalyticsWorkspaceId) {
       return this.getFallbackAlerts();
     }
 
     try {
-      const alerts = [];
-      
-      // Query Azure Monitor for active alerts
-      for await (const alert of this.monitorClient.alertRules.listBySubscription()) {
-        if (alert.isEnabled && alert.condition) {
-          alerts.push({
-            id: alert.id,
-            name: alert.name,
-            type: this.mapSeverityToType(alert.severity),
-            severity: alert.severity || 'Unknown',
-            description: alert.description || 'No description',
-            time: this.getRelativeTime(alert.lastUpdatedTime),
-            resourceId: alert.targetResourceId
-          });
-        }
-      }
-
-      // If no real alerts, return recent Activity Log alerts
-      if (alerts.length === 0) {
-        return this.getFallbackAlerts();
-      }
-
-      return alerts.slice(0, 10); // Return top 10
+      const kql = `
+        Alerts
+        | where TimeGenerated > ago(30m)
+        | project TimeGenerated, Severity=SeverityLevel, AlertName, Description, ResourceId, MonitorCondition
+        | sort by TimeGenerated desc
+        | take 20
+      `;
+      const result = await this.logsQueryClient.queryWorkspace(this.logAnalyticsWorkspaceId, kql, { serverTimeoutInSeconds: 60 });
+      const table = result?.tables?.[0];
+      if (!table) return this.getFallbackAlerts();
+      const idx = {};
+      table.columns.forEach((c, i) => idx[c.name] = i);
+      const alerts = table.rows.map(r => ({
+        id: `${r[idx.ResourceId]}-${r[idx.TimeGenerated]}`,
+        name: r[idx.AlertName] || 'Alert',
+        type: this.mapSeverityToType(r[idx.Severity] ?? 3),
+        severity: (r[idx.Severity] || 'Info').toString().toLowerCase(),
+        description: r[idx.Description] || '',
+        time: this.getRelativeTime(r[idx.TimeGenerated]),
+        resourceId: r[idx.ResourceId]
+      }));
+      return alerts;
     } catch (error) {
-      console.error('Error fetching alerts:', error);
+      console.error('Error fetching alerts (Logs):', error);
       return this.getFallbackAlerts();
+    }
+  }
+
+  /**
+   * Fetch recent logs from Log Analytics (AzureActivity as fallback)
+   */
+  async getRecentLogs({ search, severity, limit = 50 } = {}) {
+    if (!this.credential || !this.logsQueryClient || !this.logAnalyticsWorkspaceId) {
+      return [];
+    }
+    try {
+      let kql = `AzureActivity | where TimeGenerated > ago(30m)`;
+      if (severity) {
+        kql += ` | where Level =~ '${severity}'`;
+      }
+      if (search) {
+        const s = search.replace(/'/g, "\\'");
+        kql += ` | where tostring(OperationNameValue) contains '${s}' or tostring(Caller) contains '${s}' or tostring(ResourceGroup) contains '${s}'`;
+      }
+      kql += ` | project TimeGenerated, Level, OperationNameValue, ResourceGroup, Caller | sort by TimeGenerated desc | take ${Math.min(parseInt(limit) || 50, 200)}`;
+
+      const result = await this.logsQueryClient.queryWorkspace(this.logAnalyticsWorkspaceId, kql, { serverTimeoutInSeconds: 60 });
+      const table = result?.tables?.[0];
+      if (!table) return [];
+      const idx = {};
+      table.columns.forEach((c, i) => idx[c.name] = i);
+      return table.rows.map(r => ({
+        timestamp: r[idx.TimeGenerated],
+        type: 'application',
+        severity: (r[idx.Level] || 'Info').toString().toLowerCase(),
+        source: r[idx.ResourceGroup] || 'Azure',
+        message: r[idx.OperationNameValue] || 'Activity',
+        user: r[idx.Caller] || 'system'
+      }));
+    } catch (e) {
+      console.error('Error fetching recent logs:', e);
+      return [];
     }
   }
 
@@ -449,6 +486,112 @@ class AzureService {
     }
   }
 
+  /**
+   * Get cost breakdown from Azure Cost Management API (returns INR)
+   */
+  async getCostBreakdown(options = {}) {
+    const { startDate, endDate, service } = options;
+
+    // Only attempt when Azure is configured
+    if (!this.credential || !this.subscriptionId) {
+      return null;
+    }
+
+    try {
+      const token = await this.credential.getToken('https://management.azure.com/.default');
+      if (!token?.token) {
+        return null;
+      }
+
+      const now = new Date();
+      const fromDate = startDate ? new Date(startDate) : new Date(now.getFullYear(), now.getMonth(), 1);
+      const toDate = endDate ? new Date(endDate) : now;
+      const scope = `/subscriptions/${this.subscriptionId}`;
+
+      const body = {
+        type: 'ActualCost',
+        timeframe: 'Custom',
+        timePeriod: {
+          from: fromDate,
+          to: toDate
+        },
+        dataset: {
+          granularity: 'Daily',
+          aggregation: {
+            totalCost: { name: 'Cost', function: 'Sum' }
+          },
+          grouping: [
+            { type: 'Dimension', name: 'ServiceName' },
+            { type: 'Dimension', name: 'ResourceGroupName' }
+          ]
+        }
+      };
+
+      const response = await fetch(
+        `https://management.azure.com${scope}/providers/Microsoft.CostManagement/query?api-version=2023-08-01`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(body)
+        }
+      );
+
+      if (!response.ok) {
+        const text = await response.text();
+        console.warn('Azure CostManagement query failed:', response.status, text.slice(0, 500));
+        return null;
+      }
+
+      const result = await response.json();
+      const columns = result?.properties?.columns || [];
+      const rows = result?.properties?.rows || [];
+
+      if (!columns.length || !rows.length) {
+        return null;
+      }
+
+      const columnIndex = columns.reduce((acc, col, idx) => {
+        acc[col.name] = idx;
+        return acc;
+      }, {});
+
+      const costs = rows
+        .map((row) => {
+          const rawCost = row[columnIndex.Cost] ?? row[columnIndex.PreTaxCost] ?? row[columnIndex.ExtendedCost] ?? 0;
+          const currency = row[columnIndex.Currency] || 'USD';
+          const dateValue = row[columnIndex.UsageDate] || row[columnIndex.UsageDateTime] || row[columnIndex.BillingPeriod];
+          const date = dateValue ? new Date(dateValue) : new Date();
+          const serviceName = row[columnIndex.ServiceName] || row[columnIndex.MeterCategory] || row[columnIndex.Product] || 'Other';
+          const resourceGroup = row[columnIndex.ResourceGroupName] || '';
+          const finalService = resourceGroup ? `${serviceName} (${resourceGroup})` : serviceName;
+          const costInInr = this.convertToInr(Number(rawCost) || 0, currency);
+
+          return {
+            date,
+            service: finalService,
+            cost: costInInr,
+            currency: 'INR'
+          };
+        })
+        .filter((item) => !service || item.service?.toLowerCase().includes(String(service).toLowerCase()));
+
+      const totalCost = costs.reduce((sum, c) => sum + (c.cost || 0), 0);
+
+      return {
+        costs,
+        totalCost,
+        currency: 'INR',
+        source: 'azure'
+      };
+    } catch (error) {
+      console.error('Error fetching Azure cost data:', error && (error.stack || error.message));
+      return null;
+    }
+  }
+
   // Helper methods
   
   getResourceGroupFromId(resourceId) {
@@ -494,6 +637,15 @@ class AzureService {
       4: 'info'
     };
     return severityMap[severity] || 'info';
+  }
+
+  convertToInr(amount, currency) {
+    const rate = parseFloat(process.env.AZURE_USD_TO_INR || '83');
+    if (!amount) return 0;
+    if (!currency || currency.toUpperCase() === 'INR') return amount;
+    if (currency.toUpperCase() === 'USD') return amount * rate;
+    // For other currencies, return as-is to avoid incorrect conversion
+    return amount;
   }
 
   // Fallback data when Azure is not configured or fails

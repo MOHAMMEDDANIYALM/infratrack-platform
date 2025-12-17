@@ -10,6 +10,7 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { AuthContext } from '../../context/AuthContext';
+import { ThemeContext } from '../../context/ThemeContext';
 import { dashboardAPI, azureAPI } from '../../services/api';
 
 const Topbar = () => {
@@ -21,15 +22,23 @@ const Topbar = () => {
   const [alerts, setAlerts] = useState([]);
   const [loadingAlerts, setLoadingAlerts] = useState(false);
   const { user, logout } = useContext(AuthContext);
+  const { theme, setTheme } = useContext(ThemeContext);
   const navigate = useNavigate();
 
-  // Fetch real alerts for notifications
+  // Fetch real alerts for notifications (prefer Azure)
   useEffect(() => {
     const fetchAlerts = async () => {
       try {
         setLoadingAlerts(true);
-        const data = await dashboardAPI.getAlerts({ limit: 5 });
-        setAlerts(Array.isArray(data?.alerts) ? data.alerts.slice(0, 5) : []);
+        let list = [];
+        try {
+          list = await azureAPI.getAlerts();
+        } catch {}
+        if (!Array.isArray(list) || list.length === 0) {
+          const data = await dashboardAPI.getAlerts({ limit: 5 });
+          list = Array.isArray(data?.alerts) ? data.alerts : [];
+        }
+        setAlerts(Array.isArray(list) ? list.slice(0,5) : []);
       } catch (e) {
         console.error('Failed to fetch alerts:', e);
         setAlerts([]);
@@ -231,7 +240,12 @@ const Topbar = () => {
                   <div className="px-4 py-2 border-b border-gray-700">
                     <p className="text-white text-sm font-medium mb-3">Display</p>
                     <label className="flex items-center space-x-3 cursor-pointer hover:bg-gray-700 px-2 py-2 rounded transition-colors">
-                      <input type="checkbox" className="w-4 h-4 rounded bg-gray-700 border-gray-600" defaultChecked />
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 rounded bg-gray-700 border-gray-600"
+                        checked={theme === 'dark'}
+                        onChange={(e)=>setTheme(e.target.checked ? 'dark' : 'light')}
+                      />
                       <span className="text-gray-300 text-sm">Dark Mode</span>
                     </label>
                     <label className="flex items-center space-x-3 cursor-pointer hover:bg-gray-700 px-2 py-2 rounded transition-colors">

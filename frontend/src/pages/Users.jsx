@@ -4,6 +4,8 @@ import { dashboardAPI } from '../services/api';
 
 const Users = () => {
   const [showAddUser, setShowAddUser] = useState(false);
+  const [form, setForm] = useState({ name: '', email: '', role: 'Viewer', organizationId: '', password: '' });
+  const [creating, setCreating] = useState(false);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -105,28 +107,56 @@ const Users = () => {
             <input
               type="text"
               placeholder="Full Name"
+              value={form.name}
+              onChange={(e)=>setForm({...form,name:e.target.value})}
               className="bg-gray-800/50 text-white px-4 py-3 rounded-lg border border-gray-700 focus:border-cyan-500 focus:outline-none"
             />
             <input
               type="email"
               placeholder="Email Address"
+              value={form.email}
+              onChange={(e)=>setForm({...form,email:e.target.value})}
               className="bg-gray-800/50 text-white px-4 py-3 rounded-lg border border-gray-700 focus:border-cyan-500 focus:outline-none"
             />
-            <select className="bg-gray-800/50 text-white px-4 py-3 rounded-lg border border-gray-700 focus:border-cyan-500 focus:outline-none">
-              <option>Select Role</option>
-              <option>Admin</option>
-              <option>DevOps</option>
-              <option>Viewer</option>
+            <select value={form.role} onChange={(e)=>setForm({...form,role:e.target.value})} className="bg-gray-800/50 text-white px-4 py-3 rounded-lg border border-gray-700 focus:border-cyan-500 focus:outline-none">
+              <option value="Admin">Admin</option>
+              <option value="DevOps">DevOps</option>
+              <option value="Viewer">Viewer</option>
             </select>
             <input
               type="text"
               placeholder="Organization ID"
+              value={form.organizationId}
+              onChange={(e)=>setForm({...form,organizationId:e.target.value})}
+              className="bg-gray-800/50 text-white px-4 py-3 rounded-lg border border-gray-700 focus:border-cyan-500 focus:outline-none"
+            />
+            <input
+              type="password"
+              placeholder="Temporary Password"
+              value={form.password}
+              onChange={(e)=>setForm({...form,password:e.target.value})}
               className="bg-gray-800/50 text-white px-4 py-3 rounded-lg border border-gray-700 focus:border-cyan-500 focus:outline-none"
             />
           </div>
           <div className="flex gap-3 mt-4">
-            <button className="px-6 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-lg">
-              Create User
+            <button
+              disabled={creating}
+              onClick={async()=>{
+                try{
+                  setCreating(true);
+                  const payload={ name:form.name,email:form.email,password:form.password,organizationId:form.organizationId,role:form.role };
+                  await dashboardAPI.createUser(payload);
+                  const data = await dashboardAPI.getUsers();
+                  setUsers(Array.isArray(data?.users)?data.users:[]);
+                  setShowAddUser(false);
+                  setForm({ name:'',email:'',role:'Viewer',organizationId:'',password:''});
+                  setError('');
+                }catch(e){
+                  setError(e.message||'Failed to create user');
+                }finally{setCreating(false);}
+              }}
+              className="px-6 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-lg disabled:opacity-60">
+              {creating ? 'Creating...' : 'Create User'}
             </button>
             <button
               onClick={() => setShowAddUser(false)}
