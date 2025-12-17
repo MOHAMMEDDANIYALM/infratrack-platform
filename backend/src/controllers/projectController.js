@@ -100,8 +100,14 @@ exports.createServer = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
-};
-
+        // Support multiple env names for GitHub token to avoid misconfiguration
+        const ghToken =
+          process.env.GITHUB_TOKEN ||
+          process.env.token_git ||
+          process.env.TOKEN_GIT ||
+          process.env.GH_TOKEN ||
+          process.env.GIT_TOKEN;
+        const ghRepo = process.env.GITHUB_REPO; // format: owner/repo
 // Update server
 exports.updateServer = async (req, res) => {
   try {
@@ -119,9 +125,9 @@ exports.updateServer = async (req, res) => {
     );
 
     if (!server) {
-      return res.status(404).json({ message: 'Server not found' });
-    }
-
+            if (!resp.ok) {
+              const text = await resp.text();
+              throw new Error(`GitHub API failed ${resp.status}: ${text.slice(0, 400)}`);
     res.json(server);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
