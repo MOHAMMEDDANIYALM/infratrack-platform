@@ -229,7 +229,7 @@ const AIops = () => {
                   <p className="text-gray-400 text-sm mb-3">{prediction.reason}</p>
                   <div className="flex flex-wrap items-center gap-3">
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${getSeverityColor(prediction.severity)}`}>
-                      {prediction.severity.toUpperCase()}
+                      {(prediction.severity || 'unknown').toUpperCase()}
                     </span>
                     <span className="text-gray-500 text-sm">{prediction.timeframe}</span>
                   </div>
