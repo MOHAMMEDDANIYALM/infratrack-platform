@@ -1,6 +1,10 @@
 // Root-level server.js entry point for Azure App Service
 // This ensures Azure can find the server regardless of the start command
 
+// Keep the process alive
+const keepAliveInterval = setInterval(() => {}, 30000);
+keepAliveInterval.unref();
+
 console.log('InfraTrack entrypoint booting...');
 console.log(`Env: ${process.env.NODE_ENV || 'development'} | Port: ${process.env.PORT || '8080 (default)'}`);
 
