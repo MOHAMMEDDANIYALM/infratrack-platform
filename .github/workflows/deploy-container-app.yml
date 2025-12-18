@@ -60,3 +60,10 @@ jobs:
           imageToDeploy: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           location: centralindia
           containerAppEnvironment: infratrack-env
+      
+      - name: Configure Health Probes
+        run: |
+          az containerapp update \
+            --name infratrack-app \
+            --resource-group infratrack-rg \
+            --yaml ./containerapp-config.yaml
