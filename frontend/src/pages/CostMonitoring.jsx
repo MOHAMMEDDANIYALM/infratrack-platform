@@ -13,10 +13,17 @@ const CostMonitoring = () => {
     const fetchCosts = async () => {
       try {
         setLoading(true);
-        const data = await dashboardAPI.getCosts({});
-        setCosts(Array.isArray(data?.costs) ? data.costs : []);
         setError('');
+        const data = await dashboardAPI.getCosts({});
+        console.log('[CostMonitoring] Received data:', data);
+        if (data && Array.isArray(data.costs)) {
+          setCosts(data.costs);
+        } else {
+          console.warn('[CostMonitoring] Invalid data format:', data);
+          setCosts([]);
+        }
       } catch (e) {
+        console.error('[CostMonitoring] Error:', e);
         setError(e.message || 'Failed to fetch costs');
         setCosts([]);
       } finally {

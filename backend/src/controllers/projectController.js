@@ -449,7 +449,7 @@ exports.getCosts = async (req, res) => {
 
     // Prefer real Azure Cost Management data when available
     const azureCosts = await azureService.getCostBreakdown({ startDate, endDate, service });
-    if (azureCosts && azureCosts.source === 'azure' && Array.isArray(azureCosts.costs) && azureCosts.costs.length) {
+    if (azureCosts && (azureCosts.source === 'azure' || azureCosts.source === 'azure-costmanagement' || azureCosts.source === 'azure-consumption') && Array.isArray(azureCosts.costs) && azureCosts.costs.length) {
       return res.json(azureCosts);
     }
 
@@ -467,20 +467,20 @@ exports.getCosts = async (req, res) => {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const demoCosts = [
-      { date: startOfMonth, service: 'Compute', cost: 1250000 },
-      { date: startOfMonth, service: 'Storage', cost: 750000 },
-      { date: startOfMonth, service: 'Networking', cost: 350000 },
-      { date: startOfMonth, service: 'Database', cost: 850000 },
-      { date: new Date(startOfMonth.getTime() + 86400000 * 5), service: 'Compute', cost: 1300000 },
-      { date: new Date(startOfMonth.getTime() + 86400000 * 5), service: 'Storage', cost: 800000 },
-      { date: new Date(startOfMonth.getTime() + 86400000 * 10), service: 'Compute', cost: 1280000 },
-      { date: new Date(startOfMonth.getTime() + 86400000 * 10), service: 'Database', cost: 900000 },
-      { date: new Date(startOfMonth.getTime() + 86400000 * 15), service: 'Networking', cost: 380000 },
-      { date: new Date(startOfMonth.getTime() + 86400000 * 15), service: 'Storage', cost: 820000 },
+      { date: startOfMonth.toISOString(), service: 'Compute', cost: 1250000, currency: 'INR' },
+      { date: startOfMonth.toISOString(), service: 'Storage', cost: 750000, currency: 'INR' },
+      { date: startOfMonth.toISOString(), service: 'Networking', cost: 350000, currency: 'INR' },
+      { date: startOfMonth.toISOString(), service: 'Database', cost: 850000, currency: 'INR' },
+      { date: new Date(startOfMonth.getTime() + 86400000 * 5).toISOString(), service: 'Compute', cost: 1300000, currency: 'INR' },
+      { date: new Date(startOfMonth.getTime() + 86400000 * 5).toISOString(), service: 'Storage', cost: 800000, currency: 'INR' },
+      { date: new Date(startOfMonth.getTime() + 86400000 * 10).toISOString(), service: 'Compute', cost: 1280000, currency: 'INR' },
+      { date: new Date(startOfMonth.getTime() + 86400000 * 10).toISOString(), service: 'Database', cost: 900000, currency: 'INR' },
+      { date: new Date(startOfMonth.getTime() + 86400000 * 15).toISOString(), service: 'Networking', cost: 380000, currency: 'INR' },
+      { date: new Date(startOfMonth.getTime() + 86400000 * 15).toISOString(), service: 'Storage', cost: 820000, currency: 'INR' },
     ];
 
     const totalCost = demoCosts.reduce((sum, c) => sum + c.cost, 0);
-    res.json({ costs: demoCosts, totalCost });
+    res.json({ costs: demoCosts, totalCost, currency: 'INR', source: 'demo' });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
