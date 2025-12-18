@@ -60,25 +60,20 @@ jobs:
           imageToDeploy: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           location: centralindia
           containerAppEnvironment: infratrack-env
-          yamlConfigPath: './containerapp-config.yaml'
       
-      - name: Update Container App Configuration & Environment
+      - name: Update Container App with Port and Environment Variables
         run: |
-          # Apply full containerapp-config.yaml with port and health probe settings
+          echo "📋 Applying containerapp-config.yaml configuration..."
           az containerapp update \
             --name infratrack-app \
             --resource-group infratrack-rg \
-            --yaml containerapp-config.yaml \
-            || echo "Note: YAML config may have applied partially"
+            --yaml containerapp-config.yaml || true
           
-          # Ensure critical environment variables are set
+          echo "🔑 Setting environment variables..."
           az containerapp update \
             --name infratrack-app \
             --resource-group infratrack-rg \
             --set-env-vars \
               PORT=8080 \
               NODE_ENV=production \
-              FRONTEND_URL=https://infratrack-app.graycoast-34d22b0c.centralindia.azurecontainerapps.io \
-              JWT_SECRET=${{ secrets.JWT_SECRET || 'fallback-dev-secret' }} \
-              JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET || 'fallback-dev-refresh' }} \
-              || echo "Env vars may already be configured"
+              FRONTEND_URL=https://infratrack-app.graycoast-34d22b0c.centralindia.azurecontainerapps.io
