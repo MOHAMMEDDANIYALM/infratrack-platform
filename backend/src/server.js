@@ -1,4 +1,10 @@
-require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
+// Load .env file if it exists (safe to fail in production)
+try {
+  require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
+  console.log('📄 .env file loaded');
+} catch (err) {
+  console.log('⚠️  No .env file found (OK in production - using environment variables)');
+}
 
 // Global error handlers - MUST be at the top
 process.on('unhandledRejection', (reason, promise) => {

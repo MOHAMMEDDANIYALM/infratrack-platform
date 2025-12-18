@@ -6,21 +6,30 @@ const keepAliveInterval = setInterval(() => {
   // Keep event loop busy
 }, 30000);
 
-console.log('InfraTrack entrypoint booting...');
-console.log(`Env: ${process.env.NODE_ENV || 'development'} | Port: ${process.env.PORT || '8080 (default)'}`);
+console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+console.log('🚀 InfraTrack Application Starting...');
+console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
+console.log(`📌 Port: ${process.env.PORT || '8080 (default)'}`);
+console.log(`🔑 JWT_SECRET: ${process.env.JWT_SECRET ? '✓ Set' : '✗ Missing'}`);
+console.log(`🔑 MONGODB_URI: ${process.env.MONGODB_URI ? '✓ Set' : '✗ Missing'}`);
+console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
 try {
   // Load the main server
   require('./src/server.js');
   
-  console.log('✅ Server module loaded successfully\n');
+  console.log('\n✅ Server module loaded successfully');
   console.log('✅ Process will stay alive with setInterval\n');
 } catch (error) {
-  console.error('\n❌ CRITICAL ERROR during startup:');
+  console.error('\n' + '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.error('❌ CRITICAL ERROR DURING STARTUP:');
+  console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.error('Error type:', error.constructor.name);
   console.error('Error message:', error.message);
   console.error('Stack trace:', error.stack);
-  console.error('\n🔴 Application failed to start\n');
+  console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+  console.error('🔴 Application failed to start - check logs above for details\n');
   process.exit(1);
 }
 
