@@ -11,6 +11,7 @@ import {
 const HelpCenter = () => {
   const [selectedTab, setSelectedTab] = useState('guides');
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedGuide, setSelectedGuide] = useState(null);
   const [ticketForm, setTicketForm] = useState({
     category: '',
     subject: '',
@@ -21,71 +22,340 @@ const HelpCenter = () => {
     {
       id: 1,
       title: 'Getting Started with InfraTrack',
-      category: 'Login & Access',
-      content: 'Learn how to log in and navigate the dashboard',
+      category: 'Getting Started',
+      description: 'Complete setup guide for new users',
+      content: `
+# Welcome to InfraTrack
+
+## Getting Started
+
+1. **Sign In**: Use your email and password to access the dashboard
+2. **Demo Login**: If your account isn't ready, use "Demo Login" to explore features
+3. **Navigation**: Use the sidebar to access different sections
+
+## First Steps
+- Visit the Dashboard to see real-time metrics
+- Check Servers for your infrastructure status
+- View Costs to monitor your cloud spending
+- Set up Alerts for critical events
+
+## Need Help?
+Contact your administrator if you encounter any issues.
+      `,
       icon: '🚀',
     },
     {
       id: 2,
       title: 'Understanding Dashboard Metrics',
       category: 'Dashboard',
-      content: 'Comprehensive guide to real-time monitoring metrics',
+      description: 'Learn to interpret real-time monitoring data',
+      content: `
+# Dashboard Metrics Guide
+
+## Key Metrics Explained
+
+### Active Servers
+Shows the number of currently running VMs across all regions
+
+### Container Count
+Total containers deployed in Azure Container Instances and AKS clusters
+
+### Uptime Percentage
+Service availability percentage over the monitored period
+
+### Error Rate
+Percentage of failed requests or operations
+
+## Charts and Graphs
+- **CPU Usage**: Real-time processor utilization
+- **Memory**: RAM consumption across instances
+- **Network**: Data transfer rates (inbound/outbound)
+
+## How to Use
+- Click metrics to drill down into details
+- Use date ranges to filter data
+- Export reports for analysis
+      `,
       icon: '📊',
     },
     {
       id: 3,
-      title: 'Managing Servers and Cloud Resources',
-      category: 'Servers',
-      content: 'Start, stop, restart, and monitor your servers',
+      title: 'Managing Servers and Resources',
+      category: 'Infrastructure',
+      description: 'Control and monitor your virtual machines',
+      content: `
+# Server Management
+
+## Viewing Servers
+1. Go to **Servers** section
+2. See all VMs with their status (Running/Stopped)
+3. Check CPU, Memory, Disk usage
+
+## Server Details
+Each server shows:
+- **Instance Type**: VM SKU (e.g., Standard_D2s_v3)
+- **Region**: Azure region location
+- **Status**: Current power state
+- **Uptime**: How long it's been running
+- **Performance**: CPU and memory metrics
+
+## Common Tasks
+- Monitor resource utilization
+- Check for performance bottlenecks
+- Identify idle servers for cost savings
+- Plan capacity based on usage trends
+      `,
       icon: '🖥️',
     },
     {
       id: 4,
       title: 'Kubernetes Cluster Management',
       category: 'Kubernetes',
-      content: 'Monitor nodes, pods, and deployments effectively',
+      description: 'Monitor and manage AKS clusters',
+      content: `
+# Kubernetes & Containers
+
+## Containers Overview
+Shows all running containers across:
+- Azure Container Instances (ACI)
+- Azure Kubernetes Service (AKS)
+
+## Metrics Displayed
+- **Total Containers**: All instances across clusters
+- **Running Count**: Currently active containers
+- **Health Status**: Container readiness
+
+## Deployment Monitoring
+- Check pod distribution across nodes
+- Monitor container resource limits
+- View restart counts
+- Track resource requests vs usage
+
+## Troubleshooting
+- Look for CrashLoopBackOff containers
+- Check node capacity
+- Verify image pull errors
+      `,
       icon: '☸️',
     },
     {
       id: 5,
-      title: 'Viewing and Filtering Logs',
+      title: 'Viewing and Analyzing Logs',
       category: 'Logs',
-      content: 'Access application, security, and audit logs',
+      description: 'Access and filter application logs',
+      content: `
+# Log Management
+
+## Log Types
+- **Application Logs**: App runtime events
+- **Security Logs**: Authentication and access attempts
+- **Audit Logs**: User actions and changes
+
+## Filtering Logs
+1. Select log type from dropdown
+2. Choose severity level (Critical, Warning, Info)
+3. Search by keywords
+4. Set date range
+
+## Common Queries
+- Filter by error level for troubleshooting
+- Search service name for specific component logs
+- Use timestamps to track events chronologically
+
+## Log Retention
+- Logs are stored for 30 days
+- Export important logs for compliance
+      `,
       icon: '📝',
     },
     {
       id: 6,
       title: 'Cost Monitoring and Optimization',
-      category: 'Cost',
-      content: 'Track spending and implement AI recommendations',
+      category: 'Billing',
+      description: 'Track and reduce cloud spending',
+      content: `
+# Cost Optimization Guide
+
+## Understanding Your Costs
+
+### Cost Breakdown
+- **By Service**: Compute, Storage, Networking, Database
+- **By Resource Group**: Organized by project
+- **Daily Trends**: Track spending patterns
+
+### Key Metrics
+- **Monthly Total**: Total spending this month
+- **Daily Average**: Per-day spending
+- **Forecast**: Projected month-end cost
+- **Budget Status**: % of monthly budget used
+
+## Cost Optimization Tips
+1. **Identify Idle Resources**: Stop unused VMs
+2. **Right-size Instances**: Use appropriate VM types
+3. **Reserved Instances**: Save 30-70% with commitments
+4. **Spot VMs**: Use for non-critical workloads
+5. **Delete Unused Disks**: Reduce storage costs
+
+## Alerts
+- Get notified when approaching budget
+- Warning at 75% threshold
+- Critical at 90% threshold
+      `,
       icon: '💰',
     },
     {
       id: 7,
-      title: 'Setting Up Alert Rules',
+      title: 'Setting Up and Managing Alerts',
       category: 'Alerts',
-      content: 'Configure alerts for critical system events',
+      description: 'Configure notifications for issues',
+      content: `
+# Alert Management
+
+## Alert Types
+
+### Critical Alerts (Red)
+- Server down or unreachable
+- Disk space critically low (>95%)
+- CPU sustained above 95%
+- Database connection failed
+
+### High Priority (Orange)
+- Memory usage above 85%
+- Multiple pod restarts
+- Deployment failed
+- API error rate > 5%
+
+### Medium Priority (Yellow)
+- Unusual traffic patterns
+- Slow query detected
+- Configuration change
+- Scheduled maintenance upcoming
+
+## Managing Alerts
+1. **View**: See all active alerts
+2. **Filter**: By status or priority
+3. **Acknowledge**: Mark as noted
+4. **Resolve**: Close when fixed
+
+## Notification Channels
+- Dashboard notifications
+- Email alerts
+- Webhook integrations (webhook URL: /api/webhooks/alerts)
+      `,
       icon: '🔔',
     },
     {
       id: 8,
-      title: 'CI/CD Pipeline Configuration',
-      category: 'CI/CD',
-      content: 'Monitor deployments and manage rollbacks',
+      title: 'CI/CD Pipeline Monitoring',
+      category: 'Deployments',
+      description: 'Track and manage GitHub Actions',
+      content: `
+# CI/CD Pipeline Guide
+
+## Deployment Overview
+Shows all GitHub Actions workflow runs including:
+- **Build Status**: Pass/Fail
+- **Duration**: How long the pipeline ran
+- **Environment**: Dev/Staging/Production
+- **Commit**: Associated git commit hash
+
+## Pipeline Stages
+1. **Build**: Compile and test code
+2. **Push**: Package to container registry
+3. **Deploy**: Roll out to Container Apps
+4. **Test**: Integration tests
+5. **Notify**: Send status updates
+
+## Common Scenarios
+- **Failed Deployment**: Check logs in GitHub Actions
+- **Slow Pipeline**: Review performance metrics
+- **Rollback**: Previous revision in Container Apps
+- **Skip Deployment**: Use [skip ci] in commit message
+
+## Troubleshooting
+- Failed tests indicate code issues
+- Push failures often relate to secrets
+- Deployment timeouts suggest resource issues
+      `,
       icon: '🚀',
     },
     {
       id: 9,
-      title: 'User Management and Roles',
-      category: 'Users',
-      content: 'Add users, assign roles, and manage permissions',
+      title: 'User Management and Permissions',
+      category: 'Administration',
+      description: 'Control access and user roles',
+      content: `
+# User & Permission Management
+
+## User Roles
+
+### Admin
+- Full system access
+- Create/delete users
+- Manage settings
+- View all data
+
+### DevOps
+- Manage infrastructure
+- Deploy applications
+- View all resources
+- Modify configurations
+
+### Viewer
+- Read-only access
+- View dashboards
+- Cannot make changes
+- Limited to assigned resources
+
+## Adding Users
+1. Go to **Users** section (Admin only)
+2. Click "Add User"
+3. Enter email and role
+4. Send invitation
+
+## Permissions
+- Users only see resources in their organization
+- Role-based access control (RBAC)
+- Audit trail for all actions
+      `,
       icon: '👥',
     },
     {
       id: 10,
       title: 'AI Ops Intelligence Features',
-      category: 'AI Ops',
-      content: 'Leverage AI for predictions and optimizations',
+      category: 'Advanced',
+      description: 'Leverage AI for insights',
+      content: `
+# AI Ops Features
+
+## AI-Powered Capabilities
+
+### Anomaly Detection
+- Automatically detects unusual patterns
+- Identifies performance degradation
+- Suggests root causes
+
+### Predictions
+- Forecast resource requirements
+- Predict failures before they occur
+- Estimate future costs
+
+### Recommendations
+- Cost optimization suggestions
+- Auto-scaling policies
+- Security best practices
+
+## Machine Learning Models
+- Trained on your infrastructure data
+- Continuously learns from patterns
+- Improves accuracy over time
+
+## Using AI Insights
+1. Review AI Ops dashboard
+2. Check anomaly alerts
+3. Implement recommendations
+4. Monitor impact on metrics
+      `,
       icon: '🤖',
     },
   ];
@@ -227,13 +497,14 @@ const HelpCenter = () => {
       </div>
 
       {/* User Guides */}
-      {selectedTab === 'guides' && (
+      {selectedTab === 'guides' && !selectedGuide && (
         <div>
           <h2 className="text-2xl font-bold text-white mb-4">Step-by-Step Guides</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {filteredGuides.map((guide) => (
               <div
                 key={guide.id}
+                onClick={() => setSelectedGuide(guide)}
                 className="bg-gray-900/50 border border-cyan-500/20 rounded-xl p-6 hover:border-cyan-500/40 transition-all cursor-pointer group"
               >
                 <div className="flex items-start space-x-4">
@@ -242,7 +513,7 @@ const HelpCenter = () => {
                     <h3 className="text-white font-semibold text-lg mb-2 group-hover:text-cyan-400 transition-colors">
                       {guide.title}
                     </h3>
-                    <p className="text-gray-400 text-sm mb-3">{guide.content}</p>
+                    <p className="text-gray-400 text-sm mb-3">{guide.description}</p>
                     <span className="text-cyan-400 text-xs font-medium">
                       Category: {guide.category}
                     </span>
@@ -250,6 +521,74 @@ const HelpCenter = () => {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Guide Detail View */}
+      {selectedTab === 'guides' && selectedGuide && (
+        <div>
+          <button
+            onClick={() => setSelectedGuide(null)}
+            className="mb-4 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-cyan-400 rounded-lg text-sm font-medium"
+          >
+            Back to Guides
+          </button>
+          <div className="bg-gray-900/50 border border-cyan-500/20 rounded-xl p-8">
+            <div className="flex items-center space-x-4 mb-6">
+              <div className="text-5xl">{selectedGuide.icon}</div>
+              <div>
+                <h1 className="text-3xl font-bold text-white">{selectedGuide.title}</h1>
+                <p className="text-gray-400 text-sm">Category: {selectedGuide.category}</p>
+              </div>
+            </div>
+            <div className="prose prose-invert max-w-none">
+              {selectedGuide.content.split('\n').map((line, idx) => {
+                if (line.startsWith('# ')) {
+                  return (
+                    <h1 key={idx} className="text-2xl font-bold text-white mt-6 mb-4">
+                      {line.replace('# ', '')}
+                    </h1>
+                  );
+                }
+                if (line.startsWith('## ')) {
+                  return (
+                    <h2 key={idx} className="text-xl font-bold text-cyan-400 mt-5 mb-3">
+                      {line.replace('## ', '')}
+                    </h2>
+                  );
+                }
+                if (line.startsWith('### ')) {
+                  return (
+                    <h3 key={idx} className="text-lg font-semibold text-gray-300 mt-4 mb-2">
+                      {line.replace('### ', '')}
+                    </h3>
+                  );
+                }
+                if (line.startsWith('- ')) {
+                  return (
+                    <li key={idx} className="text-gray-400 ml-4 mb-1">
+                      {line.replace('- ', '')}
+                    </li>
+                  );
+                }
+                if (line.startsWith('1. ') || line.match(/^\d+\. /)) {
+                  return (
+                    <li key={idx} className="text-gray-400 ml-4 mb-1 list-decimal">
+                      {line.replace(/^\d+\. /, '')}
+                    </li>
+                  );
+                }
+                if (line.trim() === '') {
+                  return <div key={idx} className="mb-3" />;
+                }
+                return (
+                  <p key={idx} className="text-gray-300 mb-2">
+                    {line}
+                  </p>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}

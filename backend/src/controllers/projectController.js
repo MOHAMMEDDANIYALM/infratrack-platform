@@ -497,59 +497,66 @@ exports.getDeployments = async (req, res) => {
     const ghRepo = process.env.GITHUB_REPO; // format: owner/repo
 
     if (ghToken && ghRepo) {
-      const perPage = 100;
-      const maxPages = 5; // up to 500 runs
-      const allRuns = [];
-      for (let page = 1; page <= maxPages; page++) {
-        const url = new URL(`https://api.github.com/repos/${ghRepo}/actions/runs`);
-        url.searchParams.set('per_page', perPage);
-        url.searchParams.set('page', page);
-        const resp = await fetch(url, {
-          headers: {
-            Authorization: `Bearer ${ghToken}`,
-            Accept: 'application/vnd.github+json',
-            'X-GitHub-Api-Version': '2022-11-28',
-            'User-Agent': 'infratrack-app'
+      try {
+        const perPage = 30;
+        const maxPages = 2; // Limit to just ~60 recent runs instead of 500+
+        const allRuns = [];
+        for (let page = 1; page <= maxPages; page++) {
+          const url = new URL(`https://api.github.com/repos/${ghRepo}/actions/runs`);
+          url.searchParams.set('per_page', perPage);
+          url.searchParams.set('page', page);
+          const resp = await fetch(url, {
+            headers: {
+              Authorization: `Bearer ${ghToken}`,
+              Accept: 'application/vnd.github+json',
+              'X-GitHub-Api-Version': '2022-11-28',
+              'User-Agent': 'infratrack-app'
+            }
+          });
+          if (!resp.ok) {
+            const text = await resp.text();
+            console.warn(`GitHub API error: ${resp.status}`);
+            break; // Continue to fallback instead of returning error
           }
-        });
-        if (!resp.ok) {
-          const text = await resp.text();
-          return res.status(resp.status).json({ message: 'Failed to fetch GitHub workflows', error: text });
+          const data = await resp.json();
+          const runs = Array.isArray(data.workflow_runs) ? data.workflow_runs : [];
+          allRuns.push(...runs);
+          if (runs.length < perPage) break; // no more pages
         }
-        const data = await resp.json();
-        const runs = Array.isArray(data.workflow_runs) ? data.workflow_runs : [];
-        allRuns.push(...runs);
-        if (runs.length < perPage) break; // no more pages
+
+        if (allRuns.length > 0) {
+          const mapStatus = (run) => {
+            if (run.status === 'in_progress' || run.status === 'queued') return 'running';
+            if (run.conclusion === 'success') return 'success';
+            if (run.conclusion === 'skipped' || run.conclusion === 'cancelled') return 'success';
+            if (run.conclusion === 'failure' || run.conclusion === 'timed_out') return 'failed';
+            return 'running';
+          };
+
+          const deployments = allRuns.slice(parseInt(skip) || 0).map((run) => {
+            const started = run.run_started_at || run.created_at;
+            const completed = run.updated_at;
+            const durationSeconds = started && completed ? Math.max(0, (new Date(completed) - new Date(started)) / 1000) : 0;
+
+            return {
+              id: run.id,
+              name: run.name || run.display_title || run.head_branch || 'workflow',
+              status: mapStatus(run),
+              version: run.head_branch,
+              commitHash: run.head_sha,
+              environment: run.event,
+              duration: durationSeconds,
+              startedAt: started,
+              completedAt: completed,
+              htmlUrl: run.html_url
+            };
+          });
+
+          return res.json({ deployments, total: deployments.length, hasMore: false });
+        }
+      } catch (error) {
+        console.warn('GitHub API error, falling back to demo data:', error.message);
       }
-
-      const mapStatus = (run) => {
-        if (run.status === 'in_progress' || run.status === 'queued') return 'running';
-        if (run.conclusion === 'success') return 'success';
-        if (run.conclusion === 'skipped' || run.conclusion === 'cancelled') return 'success';
-        if (run.conclusion === 'failure' || run.conclusion === 'timed_out') return 'failed';
-        return 'running';
-      };
-
-      const deployments = allRuns.slice(parseInt(skip) || 0).map((run) => {
-        const started = run.run_started_at || run.created_at;
-        const completed = run.updated_at;
-        const durationSeconds = started && completed ? Math.max(0, (new Date(completed) - new Date(started)) / 1000) : 0;
-
-        return {
-          id: run.id,
-          name: run.name || run.display_title || run.head_branch || 'workflow',
-          status: mapStatus(run),
-          version: run.head_branch,
-          commitHash: run.head_sha,
-          environment: run.event,
-          duration: durationSeconds,
-          startedAt: started,
-          completedAt: completed,
-          htmlUrl: run.html_url
-        };
-      });
-
-      return res.json({ deployments, total: deployments.length, hasMore: false });
     }
 
     // Fallback to database deployments

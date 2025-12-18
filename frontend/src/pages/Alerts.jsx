@@ -176,10 +176,10 @@ const Alerts = () => {
                     <p className="text-gray-400 text-sm mb-3">{alert.description}</p>
                     <div className="flex flex-wrap items-center gap-3">
                       <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getPriorityColor(alert.priority)}`}>
-                        {alert.priority.toUpperCase()}
+                        {(alert.priority || 'unknown').toUpperCase()}
                       </span>
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(alert.status)}`}>
-                        {alert.status.toUpperCase()}
+                        {(alert.status || 'unknown').toUpperCase()}
                       </span>
                       <span className="text-gray-500 text-xs">{alert.service}</span>
                       <span className="text-gray-500 text-xs">•</span>
