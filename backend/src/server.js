@@ -169,17 +169,28 @@ const startListening = (port) => {
   currentPort = port;
   console.log(`🔄 Attempting to listen on port ${port} at 0.0.0.0...`);
   
-  const serverInstance = server.listen(port, '0.0.0.0', () => {
-    serverListening = true;
-    console.log(`✅ Server is listening on ${port}`);
-    console.log(`InfraTrack started (env=${process.env.NODE_ENV || 'development'})`);
-  });
-  
-  serverInstance.on('error', (error) => {
-    console.error('❌ Server listen error:', error.code, error.message);
-  });
-  
-  return serverInstance;
+  try {
+    const serverInstance = server.listen(port, '0.0.0.0', () => {
+      serverListening = true;
+      console.log(`✅ Server is listening on ${port}`);
+      console.log(`InfraTrack started (env=${process.env.NODE_ENV || 'development'})`);
+    });
+    
+    serverInstance.on('error', (error) => {
+      console.error('❌ Server listen error:', error.code, error.message);
+      throw error;
+    });
+    
+    // Also log when server closes
+    serverInstance.on('close', () => {
+      console.log('⚠️  Server closed!');
+    });
+    
+    return serverInstance;
+  } catch (error) {
+    console.error('❌ Error during server.listen():', error.message);
+    throw error;
+  }
 };
 
 startListening(DEFAULT_PORT);
@@ -214,5 +225,15 @@ connectDB().then(connected => {
 });
 
 // Keep the process alive - essential for production
-const keepAliveInterval = setInterval(() => {}, 30000);
-keepAliveInterval.unref();
+console.log('🚀 Setting up keep-alive interval...');
+const keepAliveInterval = setInterval(() => {
+  // Just keep the event loop alive
+  console.log('[keepalive pulse]');
+}, 10000);
+
+// Ensure process doesn't exit
+process.on('exit', (code) => {
+  console.log(`⚠️  Process exit event with code ${code}`);
+});
+
+console.log('✅ All startup complete!');
