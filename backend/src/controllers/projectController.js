@@ -100,14 +100,8 @@ exports.createServer = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
-        // Support multiple env names for GitHub token to avoid misconfiguration
-        const ghToken =
-          process.env.GITHUB_TOKEN ||
-          process.env.token_git ||
-          process.env.TOKEN_GIT ||
-          process.env.GH_TOKEN ||
-          process.env.GIT_TOKEN;
-        const ghRepo = process.env.GITHUB_REPO; // format: owner/repo
+};
+
 // Update server
 exports.updateServer = async (req, res) => {
   try {
@@ -125,9 +119,9 @@ exports.updateServer = async (req, res) => {
     );
 
     if (!server) {
-            if (!resp.ok) {
-              const text = await resp.text();
-              throw new Error(`GitHub API failed ${resp.status}: ${text.slice(0, 400)}`);
+      return res.status(404).json({ message: 'Server not found' });
+    }
+
     res.json(server);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -499,7 +493,7 @@ exports.getDeployments = async (req, res) => {
     const { status, environment, limit = 50, skip = 0 } = req.query;
 
     // Prefer live GitHub Actions data when configured
-    const ghToken = process.env.GITHUB_TOKEN;
+    const ghToken = process.env.GITHUB_TOKEN || process.env.token_git || process.env.TOKEN_GIT || process.env.GH_TOKEN;
     const ghRepo = process.env.GITHUB_REPO; // format: owner/repo
 
     if (ghToken && ghRepo) {
