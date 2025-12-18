@@ -79,9 +79,16 @@ app.use(express.urlencoded({ extended: true }));
 // Handle CORS preflight requests (Express 5 compatible)
 app.options(/.*/, cors(corsOptions));
 
-// Health check
+// Health check with detailed status
 app.get('/health', (req, res) => {
-  res.json({ status: 'Backend is running ✅' });
+  const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
+  res.status(200).json({ 
+    status: 'ok',
+    service: 'infratrack-backend',
+    timestamp: new Date().toISOString(),
+    database: dbStatus,
+    uptime: process.uptime()
+  });
 });
 
 // WebSocket status endpoint
