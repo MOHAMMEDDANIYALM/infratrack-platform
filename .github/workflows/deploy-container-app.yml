@@ -61,19 +61,22 @@ jobs:
           location: centralindia
           containerAppEnvironment: infratrack-env
       
-      - name: Update Container App with Port and Environment Variables
+      - name: Configure Container App Port and Environment
         run: |
-          echo "📋 Applying containerapp-config.yaml configuration..."
-          az containerapp update \
+          echo "Configuring port to 8080..."
+          az containerapp ingress set \
             --name infratrack-app \
             --resource-group infratrack-rg \
-            --yaml containerapp-config.yaml || true
+            --type external \
+            --target-port 8080 || true
           
-          echo "🔑 Setting environment variables..."
+          echo "Setting environment variables..."
           az containerapp update \
             --name infratrack-app \
             --resource-group infratrack-rg \
             --set-env-vars \
               PORT=8080 \
               NODE_ENV=production \
-              FRONTEND_URL=https://infratrack-app.graycoast-34d22b0c.centralindia.azurecontainerapps.io
+              FRONTEND_URL=https://infratrack-app.graycoast-34d22b0c.centralindia.azurecontainerapps.io || true
+          
+          echo "Configuration complete"
