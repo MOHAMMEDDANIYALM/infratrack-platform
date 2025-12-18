@@ -1,0 +1,35 @@
+properties:
+  configuration:
+    ingress:
+      external: true
+      targetPort: 8080
+      transport: auto
+      allowInsecure: false
+  template:
+    containers:
+    - name: infratrack-app
+      probes:
+      - type: startup
+        httpGet:
+          path: /health
+          port: 8080
+        initialDelaySeconds: 5
+        periodSeconds: 3
+        timeoutSeconds: 10
+        failureThreshold: 10
+      - type: liveness
+        httpGet:
+          path: /health
+          port: 8080
+        initialDelaySeconds: 30
+        periodSeconds: 30
+        timeoutSeconds: 10
+        failureThreshold: 3
+      - type: readiness
+        httpGet:
+          path: /health
+          port: 8080
+        initialDelaySeconds: 5
+        periodSeconds: 5
+        timeoutSeconds: 5
+        failureThreshold: 3

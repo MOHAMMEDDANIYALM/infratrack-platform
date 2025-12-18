@@ -21,6 +21,7 @@ const path = require('path');
 const fs = require('fs');
 const http = require('http');
 const { Server } = require('socket.io');
+const mongoose = require('mongoose');
 const connectDB = require('./config/database');
 
 const authRoutes = require('./routes/authRoutes');
@@ -209,6 +210,10 @@ if (!process.env.JWT_SECRET || !process.env.JWT_REFRESH_SECRET) {
       console.warn('⚠️  Database connection error:', err.message);
       console.warn('⚠️  Using demo data for all endpoints');
     });
+
+    // Keep process alive indefinitely
+    console.log('✅ Backend is ready to serve requests');
+    process.stdin.resume();
     
   } catch (err) {
     console.error('Startup error:', err);
