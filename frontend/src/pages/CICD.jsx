@@ -99,7 +99,7 @@ const CICD = () => {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-white mb-2">CI/CD Pipeline Monitor</h1>
-        <p className="text-gray-400">Track deployments, builds, and pipeline status</p>
+        <p className="text-gray-400">Track deployments, builds, and pipeline status from GitHub Actions</p>
       </div>
 
       {/* Error Display */}

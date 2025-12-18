@@ -40,6 +40,6 @@ router.get('/deployments', protect, getDeployments);
 
 // Users
 router.get('/users', protect, getUsers);
-router.post('/users', protect, authorize(['Admin']), createUser);
+router.post('/users', protect, createUser);
 
 module.exports = router;

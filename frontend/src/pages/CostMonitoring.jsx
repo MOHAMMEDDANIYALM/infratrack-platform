@@ -83,7 +83,7 @@ const CostMonitoring = () => {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-white mb-2">Cost Monitoring & Optimization</h1>
-        <p className="text-gray-400">Track cloud spending and optimize costs with AI recommendations</p>
+        <p className="text-gray-400">Track cloud spending from Azure Cost Management and Consumption APIs with AI recommendations</p>
       </div>
 
       {/* Overview Stats */}

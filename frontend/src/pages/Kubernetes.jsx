@@ -75,10 +75,12 @@ const Kubernetes = () => {
     fetchContainers();
   }, []);
 
-  // Use containers data if available, otherwise use demo data
-  const clusters = demoClusters;
-  const nodes = demoNodes;
-  const pods = demoPods;
+  // Determine data source and show appropriate message
+  const isRealData = containers && containers.source && containers.source !== 'demo';
+  const dataSourceLabel = !loading && !isRealData ? ' (Demo Data)' : '';
+  const clusters = containers?.clusters || demoClusters;
+  const nodes = containers?.nodes || demoNodes;
+  const pods = containers?.pods || demoPods;
 
   const getStatusColor = (status) => {
     if (status === 'healthy' || status === 'Ready' || status === 'Running') return 'text-green-400 bg-green-500/20';
@@ -95,8 +97,9 @@ const Kubernetes = () => {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-white mb-2">Kubernetes Management</h1>
+        <h1 className="text-3xl font-bold text-white mb-2">Kubernetes Management{dataSourceLabel}</h1>
         <p className="text-gray-400">Monitor and manage your Kubernetes clusters, nodes, and pods</p>
+        {error && <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 text-yellow-400 text-sm mt-3">{error}</div>}
       </div>
 
       {/* Cluster Selector */}

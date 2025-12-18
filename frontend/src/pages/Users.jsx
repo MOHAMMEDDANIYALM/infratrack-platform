@@ -73,6 +73,13 @@ const Users = () => {
         </div>
       )}
 
+      {/* Empty State Info */}
+      {!loading && users.length === 0 && !showAddUser && (
+        <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 text-blue-400">
+          No users have been added yet. Click "Add User" above to create the first user.
+        </div>
+      )}
+
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-gray-900/50 border border-cyan-500/20 rounded-xl p-4">

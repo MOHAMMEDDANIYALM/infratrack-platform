@@ -74,7 +74,7 @@ const Logs = () => {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-white mb-2">Logs & Audit System</h1>
-        <p className="text-gray-400">Monitor application, security, and audit logs in real-time</p>
+        <p className="text-gray-400">Monitor application, security, and audit logs from Azure Application Insights and Log Analytics</p>
       </div>
 
       {/* Stats */}

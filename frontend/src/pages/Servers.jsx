@@ -78,7 +78,7 @@ const Servers = () => {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-white mb-2">Server Management</h1>
-        <p className="text-gray-400">Monitor and manage your virtual machines and cloud servers</p>
+        <p className="text-gray-400">Monitor and manage your virtual machines and cloud servers. Data from Azure Virtual Machines and Azure Resource Graph.</p>
       </div>
       {error && (
         <div className="text-red-400 text-sm">{error}</div>

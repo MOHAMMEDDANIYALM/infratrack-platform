@@ -91,7 +91,7 @@ const Alerts = () => {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-white mb-2">Alerts & Notifications</h1>
-        <p className="text-gray-400">Monitor and manage system alerts in real-time</p>
+        <p className="text-gray-400">Monitor and manage system alerts in real-time. Data from Azure Monitor, Log Analytics, and system events.</p>
       </div>
 
       {/* Stats */}

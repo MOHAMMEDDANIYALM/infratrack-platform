@@ -540,6 +540,7 @@ Shows all GitHub Actions workflow runs including:
               <div>
                 <h1 className="text-3xl font-bold text-white">{selectedGuide.title}</h1>
                 <p className="text-gray-400 text-sm">Category: {selectedGuide.category}</p>
+                <p className="text-cyan-400 text-xs mt-2 font-medium">Data Source: Azure / System / Real-time</p>
               </div>
             </div>
             <div className="prose prose-invert max-w-none">
