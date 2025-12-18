@@ -493,7 +493,7 @@ exports.getDeployments = async (req, res) => {
     const { status, environment, limit = 50, skip = 0 } = req.query;
 
     // Prefer live GitHub Actions data when configured
-    const ghToken = process.env.GITHUB_TOKEN || process.env.token_git || process.env.TOKEN_GIT || process.env.GH_TOKEN;
+    const ghToken = process.env.GITHUB_TOKEN || process.env.token_git || process.env.TOKEN_GIT || process.env.GH_TOKEN || process.env.GIT_TOKEN;
     const ghRepo = process.env.GITHUB_REPO; // format: owner/repo
 
     if (ghToken && ghRepo) {

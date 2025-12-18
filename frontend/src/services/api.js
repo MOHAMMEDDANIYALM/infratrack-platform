@@ -86,6 +86,9 @@ export const authAPI = {
   loginWithMicrosoft: (token) =>
     api.post('/auth/microsoft', { token }),
 
+  // Demo login for environments without DB access
+  demoLogin: () => api.post('/auth/demo-login', {}),
+
   register: (organizationId, name, email, password, department, role) =>
     api.post('/auth/register', {
       organizationId,

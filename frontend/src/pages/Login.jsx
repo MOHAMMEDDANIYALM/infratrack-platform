@@ -17,6 +17,7 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
 
   useEffect(() => {
     if (!authLoading && token) {
@@ -51,6 +52,28 @@ const Login = () => {
     } catch (err) {
       setError(err.message || 'Login failed. Please try again.');
       setLoading(false);
+    }
+  };
+
+  const handleDemoLogin = async () => {
+    setError('');
+    setDemoLoading(true);
+    try {
+      const response = await authAPI.demoLogin();
+
+      localStorage.setItem('token', response.token);
+      localStorage.setItem('refreshToken', response.refreshToken);
+      localStorage.setItem('user', JSON.stringify(response.user));
+
+      if (setAuthState) {
+        setAuthState(response.token, response.user);
+      }
+
+      navigate('/dashboard');
+    } catch (err) {
+      setError(err.message || 'Demo login failed.');
+    } finally {
+      setDemoLoading(false);
     }
   };
 
@@ -151,20 +174,37 @@ const Login = () => {
             </div>
 
             {/* Login Button */}
-            <button
-              type="submit"
-              disabled={loading || authLoading}
-              className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold py-3 rounded-lg shadow-lg shadow-cyan-500/30 transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
-            >
-              {loading || authLoading ? (
-                <>
-                  <ArrowPathIcon className="w-5 h-5 animate-spin" />
-                  <span>Signing in...</span>
-                </>
-              ) : (
-                <span>Sign In</span>
-              )}
-            </button>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                type="submit"
+                disabled={loading || authLoading}
+                className="flex-1 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold py-3 rounded-lg shadow-lg shadow-cyan-500/30 transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+              >
+                {loading || authLoading ? (
+                  <>
+                    <ArrowPathIcon className="w-5 h-5 animate-spin" />
+                    <span>Signing in...</span>
+                  </>
+                ) : (
+                  <span>Sign In</span>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={handleDemoLogin}
+                disabled={demoLoading}
+                className="flex-1 bg-gray-800 hover:bg-gray-700 text-cyan-300 hover:text-cyan-200 border border-cyan-500/30 font-semibold py-3 rounded-lg transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+              >
+                {demoLoading ? (
+                  <>
+                    <ArrowPathIcon className="w-5 h-5 animate-spin" />
+                    <span>Demo Login</span>
+                  </>
+                ) : (
+                  <span>Use Demo Login</span>
+                )}
+              </button>
+            </div>
           </form>
 
           {/* Register Link */}

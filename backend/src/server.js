@@ -144,9 +144,12 @@ app.use((err, req, res, next) => {
 });
 
 // Start server only after attempting DB connection
-const PORT = process.env.PORT || 8080;
+const DEFAULT_PORT = parseInt(process.env.PORT, 10) || 8080;
+const FALLBACK_PORT = parseInt(process.env.FALLBACK_PORT, 10) || DEFAULT_PORT + 1;
+let currentPort = DEFAULT_PORT;
+let serverListening = false;
 
-console.log(`Starting InfraTrack on port ${PORT}...`);
+console.log(`Starting InfraTrack on port ${DEFAULT_PORT}...`);
 console.log(`Env: ${process.env.NODE_ENV || 'development'}`);
 
 if (!process.env.JWT_SECRET || !process.env.JWT_REFRESH_SECRET) {
@@ -156,23 +159,33 @@ if (!process.env.JWT_SECRET || !process.env.JWT_REFRESH_SECRET) {
 (async () => {
   try {
     // Start server FIRST - don't wait for DB
-    console.log(`🔄 Attempting to listen on port ${PORT} at 0.0.0.0...`);
-    server.listen(PORT, '0.0.0.0', () => {
-      console.log(`✅ Server is listening on ${PORT}`);
-      console.log(`InfraTrack started (env=${process.env.NODE_ENV || 'development'})`);
-      
-      // Keep alive - Azure needs to see the process running
-      setInterval(() => {}, 60000);
-    });
-    
-    // Handle server errors
+    const startListening = (port) => {
+      currentPort = port;
+      console.log(`🔄 Attempting to listen on port ${port} at 0.0.0.0...`);
+      server.listen(port, '0.0.0.0', () => {
+        serverListening = true;
+        console.log(`✅ Server is listening on ${port}`);
+        console.log(`InfraTrack started (env=${process.env.NODE_ENV || 'development'})`);
+
+        // Keep alive - Azure needs to see the process running
+        setInterval(() => {}, 60000);
+      });
+    };
+
+    startListening(DEFAULT_PORT);
+
+    // Handle server errors, attempt one automatic fallback port
     server.on('error', (error) => {
       console.error('❌ Server error:', error);
-      if (error.code === 'EADDRINUSE') {
-        console.error(`🔴 Port ${PORT} is already in use`);
+      if (error.code === 'EADDRINUSE' && !serverListening) {
+        if (currentPort !== FALLBACK_PORT) {
+          console.warn(`⚠️  Port ${currentPort} is in use, retrying on ${FALLBACK_PORT}`);
+          return startListening(FALLBACK_PORT);
+        }
+        console.error(`🔴 Ports ${DEFAULT_PORT} and ${FALLBACK_PORT} are already in use`);
         process.exit(1);
       } else if (error.code === 'EACCES') {
-        console.error(`🔴 Permission denied for port ${PORT}`);
+        console.error(`🔴 Permission denied for port ${currentPort}`);
         process.exit(1);
       }
     });
