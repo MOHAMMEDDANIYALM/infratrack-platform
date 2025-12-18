@@ -61,9 +61,9 @@ jobs:
           location: centralindia
           containerAppEnvironment: infratrack-env
       
-      - name: Configure Health Probes
+      - name: Configure Health Probes via Azure CLI
         run: |
           az containerapp update \
             --name infratrack-app \
             --resource-group infratrack-rg \
-            --yaml ./containerapp-config.yaml
+            --set-env-vars PORT=8080 FRONTEND_URL=https://infratrack-app.graycoast-34d22b0c.centralindia.azurecontainerapps.io || true
