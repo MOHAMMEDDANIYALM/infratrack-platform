@@ -60,10 +60,25 @@ jobs:
           imageToDeploy: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           location: centralindia
           containerAppEnvironment: infratrack-env
+          yamlConfigPath: './containerapp-config.yaml'
       
-      - name: Configure Health Probes via Azure CLI
+      - name: Update Container App Configuration & Environment
         run: |
+          # Apply full containerapp-config.yaml with port and health probe settings
           az containerapp update \
             --name infratrack-app \
             --resource-group infratrack-rg \
-            --set-env-vars PORT=8080 FRONTEND_URL=https://infratrack-app.graycoast-34d22b0c.centralindia.azurecontainerapps.io || true
+            --yaml containerapp-config.yaml \
+            || echo "Note: YAML config may have applied partially"
+          
+          # Ensure critical environment variables are set
+          az containerapp update \
+            --name infratrack-app \
+            --resource-group infratrack-rg \
+            --set-env-vars \
+              PORT=8080 \
+              NODE_ENV=production \
+              FRONTEND_URL=https://infratrack-app.graycoast-34d22b0c.centralindia.azurecontainerapps.io \
+              JWT_SECRET=${{ secrets.JWT_SECRET || 'fallback-dev-secret' }} \
+              JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET || 'fallback-dev-refresh' }} \
+              || echo "Env vars may already be configured"

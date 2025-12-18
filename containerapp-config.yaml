@@ -5,9 +5,21 @@ properties:
       targetPort: 8080
       transport: auto
       allowInsecure: false
+      exposedPort: 443
+    activeRevisionsMode: single
   template:
+    revisionSuffix: v1
     containers:
     - name: infratrack-app
+      image: infratrackacr.azurecr.io/infratrack-platform:latest
+      resources:
+        cpu: 0.5
+        memory: 1.0Gi
+      env:
+      - name: PORT
+        value: "8080"
+      - name: NODE_ENV
+        value: production
       probes:
       - type: startup
         httpGet:
