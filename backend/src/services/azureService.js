@@ -517,7 +517,10 @@ class AzureService {
 
   async queryCostManagementAPI({ startDate, endDate, service }) {
     try {
-      const token = await this.credential.getToken('https://management.azure.com/.default');
+      const token = await Promise.race([
+        this.credential.getToken('https://management.azure.com/.default'),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Token timeout')), 5000))
+      ]);
       if (!token?.token) return null;
 
       const now = new Date();
@@ -539,14 +542,19 @@ class AzureService {
         }
       };
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+
       const response = await fetch(
         `https://management.azure.com${scope}/providers/Microsoft.CostManagement/query?api-version=2023-08-01`,
         {
           method: 'POST',
           headers: { Authorization: `Bearer ${token.token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
+          body: JSON.stringify(body),
+          signal: controller.signal
         }
       );
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const text = await response.text();
@@ -589,14 +597,23 @@ class AzureService {
       const fromDate = startDate ? new Date(startDate) : new Date(now.getFullYear(), now.getMonth(), 1);
       const toDate = endDate ? new Date(endDate) : now;
 
-      // Enumerate usage details and aggregate per day/service
+      // Enumerate usage details and aggregate per day/service (limit to avoid timeout)
       const costsMap = new Map();
       const iter = this.consumptionClient.usageDetails.list(`/subscriptions/${this.subscriptionId}`, {
         expand: 'properties/meterDetails',
-        // Top is per page, we iterate all pages; filter by date range below
+        top: 1000 // Limit records per request
       });
 
+      let count = 0;
+      const maxRecords = 5000; // Stop after 5k records to avoid timeout
+      const startTime = Date.now();
+      const maxDuration = 8000; // 8 seconds max
+
       for await (const item of iter) {
+        if (++count > maxRecords || (Date.now() - startTime) > maxDuration) {
+          console.warn(`Consumption API: stopped at ${count} records to avoid timeout`);
+          break;
+        }
         const charge = item?.properties;
         if (!charge) continue;
         const date = new Date(charge?.usageStart || charge?.usageEnd || charge?.billingPeriodStartDate || now);
