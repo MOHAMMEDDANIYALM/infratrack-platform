@@ -345,9 +345,10 @@ class AzureService {
 
     try {
       const kql = `
-        Alerts
+        AzureActivity
         | where TimeGenerated > ago(30m)
-        | project TimeGenerated, Severity=SeverityLevel, AlertName, Description, ResourceId, MonitorCondition
+        | where ActivityStatusValue in ('Failed', 'Error', 'Warning')
+        | project TimeGenerated, Severity=Level, AlertName=OperationNameValue, Description=Properties, ResourceId=ResourceId, MonitorCondition=ActivityStatusValue
         | sort by TimeGenerated desc
         | take 20
       `;
