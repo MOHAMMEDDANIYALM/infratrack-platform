@@ -552,7 +552,7 @@ exports.getDeployments = async (req, res) => {
             };
           });
 
-          return res.json({ deployments, total: deployments.length, hasMore: false });
+          return res.json({ deployments, total: deployments.length, hasMore: false, source: 'github' });
         }
       } catch (error) {
         console.warn('GitHub API error, falling back to demo data:', error.message);
@@ -658,6 +658,7 @@ exports.getDeployments = async (req, res) => {
       deployments: demoDeployments.slice(parseInt(skip) || 0).slice(0, parseInt(limit) || 50),
       total: demoDeployments.length,
       hasMore: (parseInt(skip) || 0) + (parseInt(limit) || 50) < demoDeployments.length,
+      source: 'demo'
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });

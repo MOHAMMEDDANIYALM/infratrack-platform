@@ -6,6 +6,7 @@ const CICD = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [deployments, setDeployments] = useState([]);
+  const [dataSource, setDataSource] = useState('demo');
 
   const timeAgo = (dateStr) => {
     if (!dateStr) return '—';
@@ -28,11 +29,13 @@ const CICD = () => {
         setLoading(true);
         const data = await dashboardAPI.getDeployments({ limit: 50 });
         setDeployments(Array.isArray(data?.deployments) ? data.deployments : []);
+        setDataSource(data?.source === 'github' ? 'github' : 'demo');
         setError('');
       } catch (e) {
         console.error('Failed to fetch deployments:', e);
         setError(e.message || 'Failed to fetch deployments');
         setDeployments([]);
+        setDataSource('demo');
       } finally {
         setLoading(false);
       }
@@ -100,6 +103,11 @@ const CICD = () => {
       <div>
         <h1 className="text-3xl font-bold text-white mb-2">CI/CD Pipeline Monitor</h1>
         <p className="text-gray-400">Track deployments, builds, and pipeline status from GitHub Actions</p>
+        {!loading && (
+          <div className={`mt-3 text-sm font-medium ${dataSource === 'github' ? 'text-green-400' : 'text-yellow-400'}`}>
+            Data Source: {dataSource === 'github' ? '✓ Real GitHub Actions Data' : '⚠ Demo Data (GitHub token not configured)'}
+          </div>
+        )}
       </div>
 
       {/* Error Display */}

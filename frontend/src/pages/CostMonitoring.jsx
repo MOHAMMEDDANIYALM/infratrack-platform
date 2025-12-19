@@ -7,6 +7,7 @@ const CostMonitoring = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [costs, setCosts] = useState([]);
+  const [dataSource, setDataSource] = useState('demo');
   const [budgetLimit] = useState(5000000); // 50 Lakh Rupees
 
   useEffect(() => {
@@ -18,14 +19,17 @@ const CostMonitoring = () => {
         console.log('[CostMonitoring] Received data:', data);
         if (data && Array.isArray(data.costs)) {
           setCosts(data.costs);
+          setDataSource(data?.source === 'azure' || data?.source === 'azure-costmanagement' || data?.source === 'azure-consumption' ? 'azure' : 'demo');
         } else {
           console.warn('[CostMonitoring] Invalid data format:', data);
           setCosts([]);
+          setDataSource('demo');
         }
       } catch (e) {
         console.error('[CostMonitoring] Error:', e);
         setError(e.message || 'Failed to fetch costs');
         setCosts([]);
+        setDataSource('demo');
       } finally {
         setLoading(false);
       }
@@ -84,6 +88,11 @@ const CostMonitoring = () => {
       <div>
         <h1 className="text-3xl font-bold text-white mb-2">Cost Monitoring & Optimization</h1>
         <p className="text-gray-400">Track cloud spending from Azure Cost Management and Consumption APIs with AI recommendations</p>
+        {!loading && (
+          <div className={`mt-3 text-sm font-medium ${dataSource === 'azure' ? 'text-green-400' : 'text-yellow-400'}`}>
+            Data Source: {dataSource === 'azure' ? '✓ Real Azure Cost Data' : '⚠ Demo Data (Azure APIs not configured)'}
+          </div>
+        )}
       </div>
 
       {/* Overview Stats */}
