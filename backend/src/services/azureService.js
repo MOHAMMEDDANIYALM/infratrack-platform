@@ -351,7 +351,10 @@ class AzureService {
         | sort by TimeGenerated desc
         | take 20
       `;
-      const result = await this.logsQueryClient.queryWorkspace(this.logAnalyticsWorkspaceId, kql, { serverTimeoutInSeconds: 60 });
+      const timespan = {
+        duration: 'PT30M'
+      };
+      const result = await this.logsQueryClient.queryWorkspace(this.logAnalyticsWorkspaceId, kql, timespan, { serverTimeoutInSeconds: 60 });
       const table = result?.tables?.[0];
       if (!table) return this.getFallbackAlerts();
       const idx = {};
@@ -390,7 +393,10 @@ class AzureService {
       }
       kql += ` | project TimeGenerated, Level, OperationNameValue, ResourceGroup, Caller | sort by TimeGenerated desc | take ${Math.min(parseInt(limit) || 50, 200)}`;
 
-      const result = await this.logsQueryClient.queryWorkspace(this.logAnalyticsWorkspaceId, kql, { serverTimeoutInSeconds: 60 });
+      const timespan = {
+        duration: 'PT30M'
+      };
+      const result = await this.logsQueryClient.queryWorkspace(this.logAnalyticsWorkspaceId, kql, timespan, { serverTimeoutInSeconds: 60 });
       const table = result?.tables?.[0];
       if (!table) return [];
       const idx = {};
