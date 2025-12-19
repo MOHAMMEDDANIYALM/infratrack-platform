@@ -2,6 +2,9 @@
 FROM node:20-alpine AS base
 WORKDIR /app
 
+# Build arg to bust cache
+ARG CACHEBUST=1
+
 # Install shared tools
 RUN corepack enable
 
