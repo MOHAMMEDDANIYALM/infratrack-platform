@@ -108,6 +108,11 @@ const CICD = () => {
             Data Source: {dataSource === 'github' ? '✓ Real GitHub Actions Data' : '⚠ Demo Data (GitHub token not configured)'}
           </div>
         )}
+        {!loading && dataSource !== 'github' && (
+          <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-blue-400 text-sm mt-3">
+            ℹ️ To see real GitHub Actions deployments, add <code className="bg-gray-800 px-2 py-1 rounded">GITHUB_TOKEN</code> and <code className="bg-gray-800 px-2 py-1 rounded">GITHUB_REPO</code> environment variables to the Container App
+          </div>
+        )}
       </div>
 
       {/* Error Display */}
