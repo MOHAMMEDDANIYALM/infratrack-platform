@@ -169,7 +169,7 @@ export const dashboardAPI = {
   createUser: (user) => api.post('/users', user),
 
   getContainers: () =>
-    api.get('/containers'),
+    api.get('/azure/containers'),
 
   getAnomalies: (filters = {}) => {
     const params = new URLSearchParams();

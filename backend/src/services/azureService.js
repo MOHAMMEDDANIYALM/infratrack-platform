@@ -222,10 +222,13 @@ class AzureService {
         groups.push(g);
       }
 
+      console.log(`📦 Found ${groups.length} ACI container group(s)`);
+
       let totalContainers = 0;
       const nodes = groups.map((g) => {
-        const state = g?.instanceView?.state || g?.provisioningState || 'Unknown';
-        const isRunning = String(state).toLowerCase() === 'running';
+        const state = String(g?.instanceView?.state || g?.provisioningState || '').toLowerCase();
+        console.log(`   Container: ${g.name}, State: ${state}, ProvisioningState: ${g?.provisioningState}`);
+        const isRunning = state.includes('running') || state === 'succeeded';
         const podsCount = Array.isArray(g?.containers) ? g.containers.length : 0;
         totalContainers += podsCount;
         return {
@@ -255,7 +258,8 @@ class AzureService {
 
       const pods = [];
       for (const g of groups) {
-        const groupRunning = String(g?.instanceView?.state || g?.provisioningState || '').toLowerCase() === 'running';
+        const state = String(g?.instanceView?.state || g?.provisioningState || '').toLowerCase();
+        const groupRunning = state.includes('running') || state === 'succeeded';
         if (Array.isArray(g?.containers)) {
           for (const c of g.containers) {
             pods.push({
@@ -270,6 +274,7 @@ class AzureService {
         }
       }
 
+      console.log(`✅ Containers overview: ${totalContainers} pods in ${nodes.length} groups (${runningGroups} ready)`);
       return { source: 'azure', clusters, nodes, pods };
     } catch (error) {
       console.error('Error building containers overview:', error?.message || error);
