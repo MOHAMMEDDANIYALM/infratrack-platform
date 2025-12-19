@@ -119,24 +119,33 @@ const Kubernetes = () => {
       </div>
 
       {/* Cluster Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-gray-900/50 border border-cyan-500/20 rounded-xl p-4">
-          <p className="text-gray-400 text-sm">Total Nodes</p>
-          <p className="text-3xl font-bold text-white mt-1">12</p>
-        </div>
-        <div className="bg-gray-900/50 border border-green-500/20 rounded-xl p-4">
-          <p className="text-gray-400 text-sm">Ready Nodes</p>
-          <p className="text-3xl font-bold text-green-400 mt-1">11</p>
-        </div>
-        <div className="bg-gray-900/50 border border-blue-500/20 rounded-xl p-4">
-          <p className="text-gray-400 text-sm">Total Pods</p>
-          <p className="text-3xl font-bold text-blue-400 mt-1">248</p>
-        </div>
-        <div className="bg-gray-900/50 border border-red-500/20 rounded-xl p-4">
-          <p className="text-gray-400 text-sm">Failed Pods</p>
-          <p className="text-3xl font-bold text-red-400 mt-1">3</p>
-        </div>
-      </div>
+      {(() => {
+        const selectedClusterObj = clusters.find((c) => c.name === selectedCluster);
+        const totalNodes = nodes.length;
+        const readyNodes = nodes.filter((n) => n.status === 'Ready').length;
+        const totalPods = pods.length;
+        const failedPods = pods.filter((p) => p.status !== 'Running').length;
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-gray-900/50 border border-cyan-500/20 rounded-xl p-4">
+              <p className="text-gray-400 text-sm">Total Nodes</p>
+              <p className="text-3xl font-bold text-white mt-1">{totalNodes}</p>
+            </div>
+            <div className="bg-gray-900/50 border border-green-500/20 rounded-xl p-4">
+              <p className="text-gray-400 text-sm">Ready Nodes</p>
+              <p className="text-3xl font-bold text-green-400 mt-1">{readyNodes}</p>
+            </div>
+            <div className="bg-gray-900/50 border border-blue-500/20 rounded-xl p-4">
+              <p className="text-gray-400 text-sm">Total Pods</p>
+              <p className="text-3xl font-bold text-blue-400 mt-1">{totalPods}</p>
+            </div>
+            <div className="bg-gray-900/50 border border-red-500/20 rounded-xl p-4">
+              <p className="text-gray-400 text-sm">Failed Pods</p>
+              <p className="text-3xl font-bold text-red-400 mt-1">{failedPods}</p>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Nodes */}
       <div className="bg-gray-900/50 border border-cyan-500/20 rounded-xl p-6">
