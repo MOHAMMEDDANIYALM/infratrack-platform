@@ -209,6 +209,75 @@ class AzureService {
   }
 
   /**
+   * Get containers overview for UI (clusters, nodes, pods) using ACI
+   */
+  async getContainersOverview() {
+    if (!this.credential || !this.containerClient) {
+      throw new Error('Azure not configured for Container Instances');
+    }
+
+    try {
+      const groups = [];
+      for await (const g of this.containerClient.containerGroups.list()) {
+        groups.push(g);
+      }
+
+      let totalContainers = 0;
+      const nodes = groups.map((g) => {
+        const state = g?.instanceView?.state || g?.provisioningState || 'Unknown';
+        const isRunning = String(state).toLowerCase() === 'running';
+        const podsCount = Array.isArray(g?.containers) ? g.containers.length : 0;
+        totalContainers += podsCount;
+        return {
+          name: g.name,
+          status: isRunning ? 'Ready' : 'NotReady',
+          cpu: 0,
+          memory: 0,
+          pods: podsCount,
+        };
+      });
+
+      const runningGroups = nodes.filter((n) => n.status === 'Ready').length;
+      const clusterStatus = runningGroups === nodes.length && nodes.length > 0
+        ? 'healthy'
+        : runningGroups > 0
+          ? 'warning'
+          : 'error';
+
+      const clusters = [
+        {
+          name: 'azure-container-instances',
+          nodes: nodes.length,
+          pods: totalContainers,
+          status: clusterStatus,
+        },
+      ];
+
+      const pods = [];
+      for (const g of groups) {
+        const groupRunning = String(g?.instanceView?.state || g?.provisioningState || '').toLowerCase() === 'running';
+        if (Array.isArray(g?.containers)) {
+          for (const c of g.containers) {
+            pods.push({
+              name: `${g.name}/${c.name}`,
+              namespace: g.osType || 'aci',
+              status: groupRunning ? 'Running' : 'Pending',
+              restarts: 0,
+              age: '—',
+              node: g.name,
+            });
+          }
+        }
+      }
+
+      return { source: 'azure', clusters, nodes, pods };
+    } catch (error) {
+      console.error('Error building containers overview:', error?.message || error);
+      throw error;
+    }
+  }
+
+  /**
    * Get AKS cluster metrics from Log Analytics
    */
   async getAKSMetrics() {

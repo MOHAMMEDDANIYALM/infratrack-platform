@@ -99,14 +99,14 @@ router.get('/alerts', async (req, res) => {
   }
 });
 
-// Get container count
+// Get containers overview (clusters, nodes, pods) for UI
 router.get('/containers', async (req, res) => {
   try {
-    const containers = await azureService.getContainersCount();
-    res.json(containers);
+    const overview = await azureService.getContainersOverview();
+    res.json(overview);
   } catch (error) {
-    console.error('Error fetching containers:', error);
-    res.status(500).json({ message: 'Failed to fetch containers', error: error.message });
+    console.error('Error fetching containers overview:', error);
+    res.status(503).json({ message: 'No container data available from Azure', error: error.message });
   }
 });
 
