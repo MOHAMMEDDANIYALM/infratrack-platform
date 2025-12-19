@@ -77,19 +77,6 @@ jobs:
             --set-env-vars \
               PORT=8080 \
               NODE_ENV=production \
-              FRONTEND_URL=https://infratrack-app.graycoast-34d22b0c.centralindia.azurecontainerapps.io \
-              MONGODB_URI="${{ secrets.MONGODB_URI }}" \
-              JWT_SECRET="${{ secrets.JWT_SECRET }}" \
-              JWT_REFRESH_SECRET="${{ secrets.JWT_REFRESH_SECRET }}" \
-              AZURE_SUBSCRIPTION_ID="${{ secrets.AZURE_SUBSCRIPTION_ID }}" \
-              AZURE_RESOURCE_GROUP="${{ secrets.AZURE_RESOURCE_GROUP }}" \
-              LOG_ANALYTICS_WORKSPACE_ID="${{ secrets.LOG_ANALYTICS_WORKSPACE_ID }}" \
-              AZURE_CLIENT_ID="${{ secrets.AZURE_CLIENT_ID }}" \
-              AZURE_TENANT_ID="${{ secrets.AZURE_TENANT_ID }}" \
-              AZURE_CLIENT_SECRET="${{ secrets.AZURE_CLIENT_SECRET }}" \
-              GITHUB_TOKEN="${{ secrets.GH_PAT }}" \
-              GITHUB_REPO="${{ github.repository }}" \
-              APPLICATIONINSIGHTS_CONNECTION_STRING="${{ secrets.APPLICATIONINSIGHTS_CONNECTION_STRING }}" \
-              AZURE_USD_TO_INR=90 || true
+              FRONTEND_URL=https://infratrack-app.graycoast-34d22b0c.centralindia.azurecontainerapps.io || true
           
           echo "Configuration complete"
