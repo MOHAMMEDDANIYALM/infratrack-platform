@@ -65,7 +65,7 @@ const Kubernetes = () => {
         setContainers(data);
       } catch (e) {
         console.error('Failed to fetch containers:', e);
-        setError('Failed to load Kubernetes data (using demo data)');
+        setError('No Kubernetes/Container data available from Azure. Showing demo data. Deploy AKS clusters or ACI containers to see real data.');
         // Use fallback data if fetch fails
         setContainers(null);
       } finally {
