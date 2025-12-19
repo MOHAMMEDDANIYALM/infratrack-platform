@@ -497,6 +497,7 @@ exports.getDeployments = async (req, res) => {
     const ghRepo = process.env.GITHUB_REPO; // format: owner/repo
 
     if (ghToken && ghRepo) {
+      console.log(`📦 GitHub token is configured, fetching from ${ghRepo}`);
       try {
         const perPage = 30;
         const maxPages = 2; // Limit to just ~60 recent runs instead of 500+
@@ -578,10 +579,12 @@ exports.getDeployments = async (req, res) => {
           deployments,
           total,
           hasMore: skip + deployments.length < total,
+          source: 'database'
         });
       }
     } catch (e) {
       // Continue to demo data if DB fails
+      console.log('Database deployments unavailable, using demo');
     }
 
     // Demo deployments data

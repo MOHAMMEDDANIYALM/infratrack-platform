@@ -32,6 +32,8 @@ router.get('/debug/status', (req, res) => {
       credentialInitialized: !!azureService.credential,
       credentialType: azureService.credentialType || 'unknown',
       initError: azureService.initError || null,
+      githubTokenSet: !!(process.env.GITHUB_TOKEN || process.env.token_git || process.env.TOKEN_GIT || process.env.GH_TOKEN || process.env.GIT_TOKEN),
+      githubRepoSet: !!process.env.GITHUB_REPO,
     };
     res.json(status);
   } catch (err) {
